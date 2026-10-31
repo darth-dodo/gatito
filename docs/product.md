@@ -324,7 +324,7 @@ The owner makes the art with GenAI image tools, in **pixel art**. Pets are **cut
 
 | Pose | Used for |
 |------|----------|
-| `sit` | **Idle sit**, **Content sit**, **Grumpy sit**, **Stare**, waiting for a cue |
+| `sit` | **Idle sit**, **Content sit**, **Grumpy sit**, **Stare**, waiting for a cue; drawn without ears and eyes, which are layered on as parts |
 | `loaf` | **Loaf** |
 | `sleep-curl` | **Nap**, **Cuddle nap**; rotated for **Chase tail** |
 | `belly-up` | **Belly up**, the middle of **Roll over** |

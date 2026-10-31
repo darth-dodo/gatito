@@ -155,10 +155,8 @@ const POSES: Record<(typeof POSE_NAMES)[number], Draw> = {
     c.rect(28, 36, 4, 8, ink.mid);
     c.rect(28, 42, 4, 2, ink.cream);
     c.rect(12, 41, 12, 3, ink.dark);
-    ear(c, 24, 4, 6, ink.mid, ink.light);
-    ear(c, 30, 4, 6, ink.dark, ink.mid);
+    // No ears or eyes: the rig layers those parts on sit so ears follow mood and the cat blinks.
     head(c, ink, 29, 15, 8);
-    eyesOpen(c, 30, 12);
   },
   loaf: (c, ink) => {
     c.ellipse(22, 36, 15, 8, ink.mid);

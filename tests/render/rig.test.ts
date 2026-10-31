@@ -83,6 +83,26 @@ describe('rigPose', () => {
     expect(tail(sad)).toBeGreaterThan(tail(happy));
   });
 
+  it('layers ears and eyes on the sit pose only', () => {
+    const overlay = ['ear-near', 'ear-far', 'eyes-open', 'eyes-closed'] as const;
+    for (const anim of ['idle-sit', 'content-sit', 'grumpy-sit', 'stare'] as const) {
+      const f = rigPose(anim, 1, m);
+      for (const p of overlay) expect(f.parts[p], `${anim} ${p}`).toBeDefined();
+    }
+    const others: AnimName[] = [
+      'nap', 'cuddle-nap', 'loaf', 'groom', 'stretch', 'sit-up', 'belly-up', 'dangle', 'chase-tail',
+    ];
+    for (const anim of others) {
+      for (let t = 0; t < 6; t += 0.25) {
+        const f = rigPose(anim, t, m);
+        expect(f.pose).not.toBe('sit');
+        for (const p of overlay) expect(f.parts[p], `${anim} ${p}`).toBeUndefined();
+      }
+    }
+    const belly = rigPose('roll-over', ANIM_SECONDS['roll-over'] / 2, m);
+    for (const p of overlay) expect(belly.parts[p]).toBeUndefined();
+  });
+
   it('content and grumpy sit differ only in part settings', () => {
     const content = rigPose('content-sit', 1, m);
     const grumpy = rigPose('grumpy-sit', 1, m);

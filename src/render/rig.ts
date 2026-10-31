@@ -138,7 +138,7 @@ const POSE_TAIL: Record<PoseName, { x: number; y: number; rotation: number; swin
   dangle: { x: 2, y: 12, rotation: Math.PI, swing: 1.4 },
 };
 
-/** Ears and eyes layered on the sit pose so mood and blinks show on it. */
+/** The sit pose is drawn without ears and eyes; these parts are always layered on it. Other poses keep their own. */
 const SIT_OVERLAY: Partial<Record<PartName, [number, number]>> = {
   'ear-near': [5, -17],
   'ear-far': [10, -17],
