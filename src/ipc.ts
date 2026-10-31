@@ -14,6 +14,17 @@ export const ipc = {
   getFloor(): Promise<Floor> {
     return invoke<Floor>("get_floor");
   },
+  /** Raw save text, or null when no save exists yet. */
+  loadSave(): Promise<string | null> {
+    return invoke<string | null>("load_save");
+  },
+  writeSave(text: string): Promise<void> {
+    return invoke<void>("write_save", { text });
+  },
+  /** Move a save that failed to parse aside as windowsill.json.bad. */
+  quarantineSave(): Promise<void> {
+    return invoke<void>("quarantine_save");
+  },
   onFloorChanged(cb: (floor: Floor) => void): Promise<UnlistenFn> {
     return listen<Floor>("floor-changed", (event) => cb(event.payload));
   },
