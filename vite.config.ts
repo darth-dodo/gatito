@@ -1,11 +1,21 @@
 import { defineConfig } from "vitest/config";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
   // Keep Vite from obscuring Rust errors.
   clearScreen: false,
+  build: {
+    rollupOptions: {
+      // The app overlay, plus a browser demo of the same pets on a pretend desktop.
+      input: {
+        main: fileURLToPath(new URL("./index.html", import.meta.url)),
+        demo: fileURLToPath(new URL("./demo.html", import.meta.url)),
+      },
+    },
+  },
   // Tauri expects a fixed port.
   server: {
     port: 1420,
