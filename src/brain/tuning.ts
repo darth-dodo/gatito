@@ -17,6 +17,12 @@ export const TUNING = {
   learnedShare: 0.8,
   fadeActiveHours: 40,
   cheekyChance: 1 / 7,
+  rewardStrength: 2.0,
+  noRewardFactor: 0.8,
+  minStrength: 0.2,
+  yawnBelowEnergy: 20,
+  walkAwayBelowAffection: 25,
+  walkAwayChance: 0.5,
   maxCats: 6,
   maxNameLength: 20,
 } as const;
