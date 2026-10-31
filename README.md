@@ -1,5 +1,7 @@
 # Windowsill
 
+[![CI](https://github.com/darth-dodo/windowsill/actions/workflows/ci.yml/badge.svg)](https://github.com/darth-dodo/windowsill/actions/workflows/ci.yml)
+
 > Little cats, and soon dogs, that live on your Mac's desktop. Pet them, teach them tricks, and let them nap on your windows while you work.
 
 [![Tauri 2](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)](https://v2.tauri.app)
@@ -59,6 +61,10 @@ No accounts, no telemetry, no analytics. Nothing leaves your computer except, if
 [Tauri 2](https://v2.tauri.app) with Rust for the Mac parts (transparent always-on-top overlay, click-through, screen area, idle time, menu bar, save file) and TypeScript with [PixiJS 8](https://pixijs.com) for the pets. The pet brain (mood, behaviour, trick learning) is plain, unit-tested TypeScript.
 
 The art is GenAI pixel art drawn as cut-out parts (body, head, ears, eyes, tail, legs) plus a few key poses. Code animates the parts, and an art pipeline (`npm run art`) turns generated images into crisp, consistent sprite sheets.
+
+## Releasing
+
+Push a `vX.Y.Z` tag. The release workflow builds a universal `.dmg` (Apple Silicon and Intel) into a draft GitHub Release, so nothing is published until you review it. Builds are unsigned until the Apple signing secrets are added.
 
 ## Docs
 
