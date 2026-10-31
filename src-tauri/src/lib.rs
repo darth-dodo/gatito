@@ -1,5 +1,6 @@
 mod overlay;
 mod screen;
+mod store;
 
 pub fn run() {
     tauri::Builder::default()
@@ -11,7 +12,12 @@ pub fn run() {
             screen::start_floor_poll(app.handle().clone());
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![screen::get_floor])
+        .invoke_handler(tauri::generate_handler![
+            screen::get_floor,
+            store::load_save,
+            store::write_save,
+            store::quarantine_save
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

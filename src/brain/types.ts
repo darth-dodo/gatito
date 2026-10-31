@@ -1,16 +1,24 @@
-export type Personality = 'cosy' | 'curious' | 'mischievous' | 'social';
-export type Colour =
-  | 'orange-tabby'
-  | 'black'
-  | 'white'
-  | 'grey'
-  | 'tuxedo'
-  | 'calico'
-  | 'siamese';
-export type Species = 'cat' | 'dog';
-export type Style = 'pixel' | 'soft' | 'ink' | 'silhouette';
-export type Cue = 'whistle' | 'clap' | 'toy-wand' | 'treat-bag';
-export type Trick = 'spin' | 'sit-up' | 'roll-over' | 'high-five' | 'chase-tail';
+export const SPECIES = ['cat', 'dog'] as const;
+export const STYLES = ['pixel', 'soft', 'ink', 'silhouette'] as const;
+export const COLOURS = [
+  'orange-tabby',
+  'black',
+  'white',
+  'grey',
+  'tuxedo',
+  'calico',
+  'siamese',
+] as const;
+export const PERSONALITIES = ['cosy', 'curious', 'mischievous', 'social'] as const;
+export const CUES = ['whistle', 'clap', 'toy-wand', 'treat-bag'] as const;
+export const TRICKS = ['spin', 'sit-up', 'roll-over', 'high-five', 'chase-tail'] as const;
+
+export type Species = (typeof SPECIES)[number];
+export type Style = (typeof STYLES)[number];
+export type Colour = (typeof COLOURS)[number];
+export type Personality = (typeof PERSONALITIES)[number];
+export type Cue = (typeof CUES)[number];
+export type Trick = (typeof TRICKS)[number];
 
 /** Both meters range from 0 to 100. */
 export interface Mood {
