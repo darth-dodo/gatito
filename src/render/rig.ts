@@ -135,7 +135,7 @@ const POSE_TAIL: Record<PoseName, { x: number; y: number; rotation: number; swin
   stretch: { x: -30, y: -21, rotation: 2.3, swing: 0.6 },
   groom: { x: -29, y: 22, rotation: 1.1, swing: 0.6 },
   'sit-up': { x: -17, y: 26, rotation: 1.1, swing: 1 },
-  dangle: { x: -24, y: -6, rotation: -0.4, swing: 1.4 },
+  dangle: { x: -11, y: 8, rotation: -0.56, swing: 1.4 },
 };
 
 /** The sit pose is drawn without ears and eyes; these parts are always layered on it. Other poses keep their own. */

@@ -31,7 +31,7 @@ const SUBJECTS: Record<string, string> = {
   stretch: 'whole cat in a stretch, front legs forward, rear raised, without the tail',
   groom: 'whole cat sitting and licking a raised paw, without the tail',
   'sit-up': 'whole cat sitting up on hind legs, front paws held up, without the tail',
-  dangle: 'whole cat held up by the scruff, body hanging limp with legs dangling, without the tail',
+  dangle: 'whole cat hanging limp as if lifted by the scruff from above, body hanging, front paws dangling down, hind legs dangling, tail hanging straight down, no hand, no person, nothing holding it',
 };
 const PARTS = ['body', 'head', 'ear-near', 'ear-far', 'eyes-open', 'eyes-closed', 'tail', 'leg-front-near', 'leg-front-far', 'leg-back-near', 'leg-back-far', 'paw-raised'];
 const POSES = ['sit', 'loaf', 'sleep-curl', 'belly-up', 'stretch', 'groom', 'sit-up', 'dangle'];
