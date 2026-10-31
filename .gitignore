@@ -4,3 +4,10 @@ dist/
 target/
 .DS_Store
 .env
+dist-ssr/
+*.log
+*.local
+coverage/
+.vscode/*
+!.vscode/extensions.json
+.idea
