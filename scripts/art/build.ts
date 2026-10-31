@@ -6,12 +6,11 @@ import sharp from 'sharp';
 import { COLOURS, SPECIES, type Colour, type Species } from '../../src/brain/types';
 import { PART_NAMES, POSE_NAMES } from '../../src/render/artNames';
 import { PLACEHOLDER_COATS, writePlaceholders } from './placeholder';
-import { recolour } from './recolour';
+import { isKey, recolour } from './recolour';
 
 const CELL = 48;
 const COLUMNS = 5;
 const MAX_COLOURS = 16;
-const KEY_TOLERANCE = 24;
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const DERIVED_COATS: readonly Colour[] = ['black', 'white', 'grey'];
 
@@ -30,13 +29,7 @@ async function prepare(file: string, name: string): Promise<Buffer> {
     throw new Error(`${name}: image is ${info.width} by ${info.height}, expected a square`);
   }
   for (let i = 0; i < data.length; i += 4) {
-    if (
-      Math.abs(data[i] - 255) <= KEY_TOLERANCE &&
-      data[i + 1] <= KEY_TOLERANCE &&
-      Math.abs(data[i + 2] - 255) <= KEY_TOLERANCE
-    ) {
-      data[i + 3] = 0;
-    }
+    if (isKey(data[i], data[i + 1], data[i + 2])) data[i + 3] = 0;
   }
   const small = await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } })
     .resize(CELL, CELL, { kernel: 'nearest', fit: 'fill' })
@@ -96,7 +89,7 @@ function option(args: string[], flag: string, fallback: string): string {
   return i >= 0 && args[i + 1] ? resolve(args[i + 1]) : fallback;
 }
 
-async function main(args: string[]): Promise<number> {
+export async function main(args: string[]): Promise<number> {
   const src = option(args, '--src', join(ROOT, 'art/source'));
   const out = option(args, '--out', join(ROOT, 'src/assets/atlas'));
   const placeholders = args.includes('--placeholders');

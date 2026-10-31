@@ -46,6 +46,13 @@ export const COAT_PALETTES: Record<'orange-tabby' | 'black' | 'white' | 'grey', 
   ],
 };
 
+/** How far a channel may stray from #FF00FF and still count as the magenta background key. */
+export const KEY_TOLERANCE = 24;
+
+export function isKey(r: number, g: number, b: number): boolean {
+  return Math.abs(r - 255) <= KEY_TOLERANCE && g <= KEY_TOLERANCE && Math.abs(b - 255) <= KEY_TOLERANCE;
+}
+
 const DERIVED = ['black', 'white', 'grey'];
 
 function distance(a: Rgb, b: Rgb): number {
@@ -68,7 +75,8 @@ export async function recolour(png: Buffer, from: Colour, to: Colour): Promise<B
   const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const cache = new Map<number, Rgb>();
   for (let i = 0; i < data.length; i += 4) {
-    if (data[i + 3] === 0) continue;
+    // Transparent pixels and the magenta key are left alone; the build removes the key afterwards.
+    if (data[i + 3] === 0 || isKey(data[i], data[i + 1], data[i + 2])) continue;
     const key = (data[i] << 16) | (data[i + 1] << 8) | data[i + 2];
     let mapped = cache.get(key);
     if (!mapped) {

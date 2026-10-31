@@ -42,6 +42,12 @@ describe('recolour', () => {
     expect(data[3]).toBe(0);
   });
 
+  it('passes the magenta key through so it can still be removed afterwards', async () => {
+    const keyed: Rgb[] = [[255, 0, 255], [250, 8, 247]];
+    const out = await pixelsOf(await recolour(await toPng(keyed, 2), 'orange-tabby', 'white'));
+    expect(out.slice(0, 2)).toEqual(keyed);
+  });
+
   it('rejects colours it cannot derive', async () => {
     await expect(recolour(await toPng([[0, 0, 0]], 1), 'orange-tabby', 'calico')).rejects.toThrow(
       /calico/,

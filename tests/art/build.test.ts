@@ -144,6 +144,27 @@ describe('writePlaceholders', () => {
 });
 
 describe('npm run art', () => {
+  it('derived coats from a magenta-background tabby have a transparent background', async () => {
+    const src = join(root, 'source');
+    await writeFullSet(join(src, 'cat', 'orange-tabby'));
+    const out = join(root, 'out');
+    execFileSync('node_modules/.bin/tsx', ['scripts/art/build.ts', '--src', src, '--out', out], { stdio: 'pipe' });
+    for (const coat of ['black', 'white', 'grey']) {
+      const atlas = JSON.parse(readFileSync(join(out, `cat-${coat}.json`), 'utf8'));
+      const { x, y } = atlas.frames.body.frame;
+      const cell = await sharp(join(out, `cat-${coat}.png`))
+        .extract({ left: x, top: y, width: 48, height: 48 })
+        .ensureAlpha()
+        .raw()
+        .toBuffer();
+      expect(cell[3], coat).toBe(0);
+      expect(cell[(47 * 48 + 47) * 4 + 3], coat).toBe(0);
+      for (let i = 0; i < cell.length; i += 4) {
+        if (cell[i + 3] > 0) expect([cell[i], cell[i + 1], cell[i + 2]], coat).not.toEqual([232, 144, 154]);
+      }
+    }
+  }, 30_000);
+
   it('exits 1 and names the missing files', async () => {
     const src = join(root, 'source');
     await writeFullSet(join(src, 'cat', 'orange-tabby'), ['tail', 'sit']);
