@@ -12,15 +12,10 @@ import { CAT_BOX, rigPose } from '../render/rig';
 import { PetStage } from '../render/stage';
 import { PetController } from '../sim/controller';
 import { World, type Body } from '../sim/world';
-import { InputRouter } from './input';
+import { HELD_HITBOX_PAD_PX, InputRouter, cursorEscapedHold } from './input';
 
 /** Hit boxes go to the host at most this often. */
 const HITBOX_MIN_INTERVAL_MS = 1000 / 30;
-/**
- * While a pet is held its hit box grows by this much on every side, so a fast drag that outruns
- * a frame never lands outside it and turns click-through back on mid drag.
- */
-const HELD_HITBOX_PAD_PX = 160;
 /** Spreads per-pet seeds apart (golden ratio in 32 bits). */
 const SEED_STRIDE = 0x9e3779b9;
 
@@ -124,7 +119,11 @@ function listenPointer(canvas: HTMLCanvasElement, router: InputRouter): Unlisten
   const off = new AbortController();
   const opts = { signal: off.signal };
   canvas.style.touchAction = 'none';
-  canvas.addEventListener('pointermove', (e) => router.pointerMove(e.clientX, e.clientY, e.timeStamp / 1000), opts);
+  canvas.addEventListener(
+    'pointermove',
+    (e) => router.pointerMove(e.clientX, e.clientY, e.timeStamp / 1000, e.buttons),
+    opts,
+  );
   canvas.addEventListener(
     'pointerdown',
     (e) => {
@@ -198,6 +197,10 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<{ s
     const userIdleSeconds = host.userIdleSeconds();
     const active = activeSeconds(dt, { userIdleSeconds, napTime: false });
     const ctx = { cursor, userIdleSeconds, floor };
+
+    const heldId = router.heldId();
+    const held = heldId === null ? undefined : pets.find((p) => p.body.id === heldId);
+    if (held && cursorEscapedHold(held.body, cursor)) router.release();
 
     for (const p of pets) p.controller.update(dt, ctx);
     world.step(dt);

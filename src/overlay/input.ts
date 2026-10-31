@@ -1,8 +1,30 @@
 import { petMood } from '../brain/mood';
 import { StrokeDetector } from '../brain/stroke';
 import { TUNING } from '../brain/tuning';
+import type { Point } from '../ipc';
 import type { PetController } from '../sim/controller';
 import type { Body, World } from '../sim/world';
+
+/**
+ * While a pet is held its hit box grows by this much on every side, so a fast drag that outruns
+ * a frame never lands outside it and turns click-through back on mid drag.
+ */
+export const HELD_HITBOX_PAD_PX = 160;
+
+/**
+ * Pure: true once the host cursor is outside the held pet's padded hit box. Past that point the
+ * overlay is click-through again and would never see the mouse-up, so the hold must end.
+ */
+export function cursorEscapedHold(body: Body, cursor: Point | null): boolean {
+  if (!cursor) return false;
+  const pad = HELD_HITBOX_PAD_PX;
+  return (
+    cursor.x < body.x - pad ||
+    cursor.x > body.x + body.width + pad ||
+    cursor.y < body.y - pad ||
+    cursor.y > body.y + body.height + pad
+  );
+}
 
 /** A pet the pointer can reach: its body for hit tests and its controller for reactions. */
 export interface Pettable {
@@ -28,9 +50,14 @@ interface Stroking {
 
 interface Hold {
   id: string;
+  /** Where the press happened; the pick up waits for the pointer to move dragStartPx from here. */
+  pressX: number;
+  pressY: number;
   /** Pointer position minus the body's top left at the press, so the cat does not jump. */
   dx: number;
   dy: number;
+  /** False while the press is still only a press (a click so far). */
+  lifted: boolean;
 }
 
 /**
@@ -49,14 +76,26 @@ export class InputRouter {
     this.deps = deps;
   }
 
-  /** The pet currently held, or null. */
+  /** The pet currently picked up, or null. */
   heldId(): string | null {
-    return this.hold?.id ?? null;
+    return this.hold?.lifted ? this.hold.id : null;
   }
 
-  pointerMove(x: number, y: number, t: number): void {
-    if (this.hold) {
-      this.deps.world.dragTo(this.hold.id, x - this.hold.dx, y - this.hold.dy);
+  /** `buttons` is the PointerEvent bitmask; bit 1 is the left button. */
+  pointerMove(x: number, y: number, t: number, buttons: number): void {
+    const hold = this.hold;
+    if (hold) {
+      // The mouse-up went somewhere else: never leave a pet stuck in the air.
+      if ((buttons & 1) === 0) {
+        this.release();
+        return;
+      }
+      if (!hold.lifted) {
+        if (Math.hypot(x - hold.pressX, y - hold.pressY) < TUNING.dragStartPx) return;
+        hold.lifted = true;
+        this.deps.world.pickUp(hold.id, hold.pressX - hold.dx, hold.pressY - hold.dy);
+      }
+      this.deps.world.dragTo(hold.id, x - hold.dx, y - hold.dy);
       return;
     }
     const target = this.hit(x, y);
@@ -67,7 +106,12 @@ export class InputRouter {
   }
 
   pointerDown(x: number, y: number, button: 0 | 2): void {
-    if (this.hold) return;
+    if (this.hold?.lifted) {
+      // A press while still holding means the last release was missed: drop now.
+      this.release();
+      return;
+    }
+    this.hold = null;
     const target = this.hit(x, y);
     if (!target) return;
     const id = target.body.id;
@@ -77,15 +121,18 @@ export class InputRouter {
     }
     this.leaveStroking();
     const b = target.body;
-    this.hold = { id, dx: x - b.x, dy: y - b.y };
-    this.deps.world.pickUp(id, b.x, b.y);
+    this.hold = { id, pressX: x, pressY: y, dx: x - b.x, dy: y - b.y, lifted: false };
   }
 
   pointerUp(_x: number, _y: number): void {
-    if (!this.hold) return;
-    // Dropping never touches mood.
-    this.deps.world.drop(this.hold.id);
+    this.release();
+  }
+
+  /** Ends any press; a picked up pet drops. Dropping never touches mood. */
+  release(): void {
+    const hold = this.hold;
     this.hold = null;
+    if (hold?.lifted) this.deps.world.drop(hold.id);
   }
 
   /** The pointer left the pets' window area: any stroke in progress ends. */
