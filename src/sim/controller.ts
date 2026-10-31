@@ -55,7 +55,9 @@ export type ControllerAction =
   | { kind: 'trick'; trick: Trick }
   | { kind: 'purr' }
   | { kind: 'yawn' }
-  | { kind: 'walk-away' };
+  | { kind: 'walk-away' }
+  /** Walk to this body x (left edge), then sit for a moment. */
+  | { kind: 'go-to'; x: number };
 
 type Plan =
   /** Plays for a fixed time. */
@@ -115,6 +117,15 @@ export class PetController {
       this.play(action.trick, { kind: 'timed', seconds: ANIM_SECONDS[action.trick] });
     } else if (action.kind === 'purr' || action.kind === 'yawn') {
       this.play(action.kind, { kind: 'timed', seconds: ANIM_SECONDS[action.kind] });
+    } else if (action.kind === 'go-to') {
+      const dx = action.x - this.body.x;
+      if (Math.abs(dx) <= ARRIVE_PX) {
+        this.play('idle-sit', { kind: 'timed', seconds: this.span('idle-sit') });
+        return;
+      }
+      this.body.facing = dx > 0 ? 1 : -1;
+      this.body.vx = this.body.facing * WALK_SPEED;
+      this.play('walk', { kind: 'approach', x: action.x, then: 'idle-sit', seconds: this.span('idle-sit') });
     } else {
       const c = this.lastCursor;
       const dir = c ? (c.x > this.centre() ? -1 : 1) : (-this.body.facing as 1 | -1);

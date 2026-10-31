@@ -3,14 +3,23 @@ import { newPairings } from '../brain/learning';
 import type { Pet } from '../brain/types';
 import { startPets, type PetHost } from './app';
 
-/** The Tauri overlay: floor, cursor and hit boxes come from Rust. */
+/** How often the OS idle time is read. */
+const IDLE_POLL_MS = 5000;
+
+let userIdle = 0;
+function pollIdle(): void {
+  ipc.userIdleSeconds().then((s) => { userIdle = s; }, () => { userIdle = 0; });
+}
+pollIdle();
+setInterval(pollIdle, IDLE_POLL_MS);
+
+/** The Tauri overlay: floor, cursor, idle time and hit boxes come from Rust. */
 const tauriHost: PetHost = {
   getFloor: () => ipc.getFloor(),
   onFloorChanged: (cb) => ipc.onFloorChanged(cb),
   onCursor: (cb) => ipc.onCursor(cb),
   setHitboxes: (rects) => ipc.setHitboxes(rects),
-  /** Task 14 reads the OS idle time here. */
-  userIdleSeconds: () => 0,
+  userIdleSeconds: () => userIdle,
 };
 
 /** The single hard-coded pet until creation and saving arrive (Task 12). */
@@ -28,4 +37,22 @@ function testPet(): Pet {
   };
 }
 
-void startPets(tauriHost, { pets: [testPet()], container: document.body });
+/** Saves everything before the app exits. A no-op until Task 12 owns the save file. */
+async function flushBeforeQuit(): Promise<void> {}
+
+async function boot(): Promise<void> {
+  const pets = [testPet()];
+  const controls = await startPets(tauriHost, { pets, container: document.body });
+  // Nap time is kept in memory for now; Task 12 persists it in settings.
+  await Promise.all([
+    ipc.onNapTime((on) => controls.setNapTime(on)),
+    ipc.onCallOver((id) => controls.callOver(id)),
+    ipc.onQuitRequested(() => {
+      void flushBeforeQuit().finally(() => ipc.quitApp());
+    }),
+  ]);
+  // Task 12 calls this again whenever pets change.
+  await ipc.setMenuPets(pets.map((p) => ({ id: p.id, name: p.name })));
+}
+
+void boot();

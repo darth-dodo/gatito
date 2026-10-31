@@ -49,4 +49,35 @@ export const ipc = {
   onFloorChanged(cb: (floor: Floor) => void): Promise<UnlistenFn> {
     return listen<Floor>("floor-changed", (event) => cb(event.payload));
   },
+  /** Seconds since the user's last keyboard or mouse input (0 if unknown). */
+  userIdleSeconds(): Promise<number> {
+    return invoke<number>("user_idle_seconds");
+  },
+  /** Rebuild the menu bar menu's per-pet submenus. */
+  setMenuPets(pets: { id: string; name: string }[]): Promise<void> {
+    return invoke<void>("set_menu_pets", { pets });
+  },
+  /** Exit the app now (after the front end has saved). */
+  quitApp(): Promise<void> {
+    return invoke<void>("quit_app");
+  },
+  onNapTime(cb: (on: boolean) => void): Promise<UnlistenFn> {
+    return listen<{ on: boolean }>("nap-time", (event) => cb(event.payload.on));
+  },
+  onCallOver(cb: (id: string) => void): Promise<UnlistenFn> {
+    return listen<{ id: string }>("call-over", (event) => cb(event.payload.id));
+  },
+  onQuitRequested(cb: () => void): Promise<UnlistenFn> {
+    return listen("quit-requested", () => cb());
+  },
+  /** Menu "New pet…"; a later step opens Task 12's window. */
+  onMenuNewPet(cb: () => void): Promise<UnlistenFn> {
+    return listen("menu-new-pet", () => cb());
+  },
+  onMenuEditPet(cb: (id: string) => void): Promise<UnlistenFn> {
+    return listen<{ id: string }>("menu-edit-pet", (event) => cb(event.payload.id));
+  },
+  onMenuRehomePet(cb: (id: string) => void): Promise<UnlistenFn> {
+    return listen<{ id: string }>("menu-rehome-pet", (event) => cb(event.payload.id));
+  },
 };

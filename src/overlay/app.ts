@@ -11,6 +11,7 @@ import { floatingZs } from '../render/effects';
 import { CAT_BOX, rigPose } from '../render/rig';
 import { PetStage } from '../render/stage';
 import { PetController } from '../sim/controller';
+import { NapTime } from './napTime';
 import { World, type Body } from '../sim/world';
 
 /** Hit boxes go to the host at most this often. */
@@ -85,6 +86,11 @@ function spawnBody(id: string, floor: Floor, index: number, count: number): Body
   };
 }
 
+/** What a pet shows while Nap time has it curled up. */
+function curledAnim(t: number): { name: 'nap'; t: number } {
+  return { name: 'nap', t };
+}
+
 /** Sends every pet's rect when any of them moved, throttled. */
 function hitboxPusher(host: PetHost): (bodies: readonly Body[], now: number) => void {
   let lastKey = '';
@@ -104,8 +110,16 @@ function hitboxPusher(host: PetHost): (bodies: readonly Body[], now: number) => 
   };
 }
 
+export interface PetControls {
+  stop(): void;
+  /** Nap time: the cats curl up and fade out (mood clock stops), or fade back in. */
+  setNapTime(on: boolean): void;
+  /** Walks the pet to the middle of the screen. */
+  callOver(id: string): void;
+}
+
 /** Runs the pets (brain, world, controllers and PixiJS stage) inside `container`, fed by `host`. */
-export async function startPets(host: PetHost, options: PetOptions): Promise<{ stop(): void }> {
+export async function startPets(host: PetHost, options: PetOptions): Promise<PetControls> {
   const timeScale = options.timeScale ?? 1;
   const baseSeed = options.seed ?? Date.now();
 
@@ -126,6 +140,8 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<{ s
   const stage = new PetStage(app);
   const pushHitboxes = hitboxPusher(host);
   const pets: Living[] = [];
+  const nap = new NapTime();
+  let napT = 0;
 
   for (const [i, pet] of options.pets.entries()) {
     const body = spawnBody(pet.id, floor, i, options.pets.length);
@@ -148,10 +164,12 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<{ s
   app.ticker.add((ticker) => {
     const dt = clampFrameDelta(ticker.deltaMS / 1000) * timeScale;
     const userIdleSeconds = host.userIdleSeconds();
-    const active = activeSeconds(dt, { userIdleSeconds, napTime: false });
+    const active = activeSeconds(dt, { userIdleSeconds, napTime: nap.on });
     const ctx = { cursor, userIdleSeconds, floor };
 
-    for (const p of pets) p.controller.update(dt, ctx);
+    nap.update(dt);
+    if (!nap.curled) for (const p of pets) p.controller.update(dt, ctx);
+    else for (const p of pets) if (!p.body.held) p.body.vx = 0;
     world.step(dt);
 
     for (const { body: b, controller: c } of pets) {
@@ -162,14 +180,22 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<{ s
           pairings: fade(c.pet.pairings, active),
         });
       }
-      const { name, t } = c.anim();
+      const { name, t } = nap.curled ? curledAnim(napT) : c.anim();
+      stage.setAlpha(c.pet.id, nap.alpha);
       stage.draw(c.pet.id, b, rigPose(name, t, c.pet.mood));
       stage.drawZs(c.pet.id, name === 'nap' || name === 'cuddle-nap' ? floatingZs(t) : []);
     }
-    pushHitboxes(world.bodies(), performance.now());
+    napT = nap.curled ? napT + dt : 0;
+    pushHitboxes(nap.hidden ? [] : world.bodies(), performance.now());
   });
 
   return {
+    setNapTime: (on) => nap.setOn(on),
+    callOver(id) {
+      const p = pets.find((q) => q.controller.pet.id === id);
+      if (!p) return;
+      p.controller.start({ kind: 'go-to', x: floor.x + floor.width / 2 - p.body.width / 2 });
+    },
     stop() {
       for (const off of unlisten) off();
       app.destroy({ removeView: true }, { children: true });

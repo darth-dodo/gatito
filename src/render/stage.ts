@@ -113,6 +113,12 @@ export class PetStage {
     this.apply(look, frame, e.sheet);
   }
 
+  /** Fades the whole pet, 1 fully visible. */
+  setAlpha(id: string, alpha: number): void {
+    const e = this.entries.get(id);
+    if (e) e.outer.alpha = alpha;
+  }
+
   /** The floating "z"s of a napping pet; an empty list clears them. */
   drawZs(id: string, zs: readonly FloatingZ[]): void {
     const e = this.entries.get(id);
