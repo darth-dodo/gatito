@@ -1,0 +1,138 @@
+{
+  "cell": 48,
+  "note": "Parts are drawn in place in the assembled standing cat. anchor is the pivot in 0..1 cell coordinates. offset is the pivot position in cell pixels relative to the body pivot. z is draw order, low first.",
+  "parts": {
+    "body": {
+      "anchor": [
+        0.4583,
+        0.5833
+      ],
+      "z": 4,
+      "offset": [
+        0,
+        0
+      ]
+    },
+    "head": {
+      "anchor": [
+        0.625,
+        0.4583
+      ],
+      "z": 5,
+      "offset": [
+        8,
+        -6
+      ]
+    },
+    "ear-near": {
+      "anchor": [
+        0.7292,
+        0.2708
+      ],
+      "z": 6,
+      "offset": [
+        13,
+        -15
+      ]
+    },
+    "ear-far": {
+      "anchor": [
+        0.8542,
+        0.2708
+      ],
+      "z": 3,
+      "offset": [
+        19,
+        -15
+      ]
+    },
+    "eyes-open": {
+      "anchor": [
+        0.8125,
+        0.375
+      ],
+      "z": 7,
+      "offset": [
+        17,
+        -10
+      ]
+    },
+    "eyes-closed": {
+      "anchor": [
+        0.8125,
+        0.375
+      ],
+      "z": 7,
+      "offset": [
+        17,
+        -10
+      ]
+    },
+    "tail": {
+      "anchor": [
+        0.2083,
+        0.5833
+      ],
+      "z": 0,
+      "offset": [
+        -12,
+        0
+      ]
+    },
+    "leg-front-near": {
+      "anchor": [
+        0.625,
+        0.6667
+      ],
+      "z": 9,
+      "offset": [
+        8,
+        4
+      ]
+    },
+    "leg-front-far": {
+      "anchor": [
+        0.7292,
+        0.6667
+      ],
+      "z": 2,
+      "offset": [
+        13,
+        4
+      ]
+    },
+    "leg-back-near": {
+      "anchor": [
+        0.25,
+        0.6667
+      ],
+      "z": 8,
+      "offset": [
+        -10,
+        4
+      ]
+    },
+    "leg-back-far": {
+      "anchor": [
+        0.3542,
+        0.6667
+      ],
+      "z": 1,
+      "offset": [
+        -5,
+        4
+      ]
+    },
+    "paw-raised": {
+      "anchor": [
+        0.7083,
+        0.625
+      ],
+      "z": 10,
+      "offset": [
+        12,
+        2
+      ]
+    }
+  }
+}

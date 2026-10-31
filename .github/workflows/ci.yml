@@ -25,6 +25,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx tsc --noEmit
+      - name: Check the committed sprite sheets are current
+        run: npx tsx scripts/art/check-fresh.ts
       - run: npm test -- --coverage
 
   rust:
