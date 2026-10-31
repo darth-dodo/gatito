@@ -1,9 +1,7 @@
 import type { Rng } from './rng';
 import { TUNING } from './tuning';
+import { CUES, TRICKS } from './types';
 import type { Cue, Pairings, Pet, Trick } from './types';
-
-const CUES: readonly Cue[] = ['whistle', 'clap', 'toy-wand', 'treat-bag'];
-const TRICKS: readonly Trick[] = ['spin', 'sit-up', 'roll-over', 'high-five', 'chase-tail'];
 
 export type CueResponse =
   | { kind: 'perform'; trick: Trick; cheeky: boolean }
