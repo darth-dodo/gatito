@@ -18,7 +18,7 @@ Folder: `art/source/<species>/<coat>/`. Species is `cat` (and `dog` from Phase 2
 | Parts (12) | `body` `head` `ear-near` `ear-far` `eyes-open` `eyes-closed` `tail` `leg-front-near` `leg-front-far` `leg-back-near` `leg-back-far` `paw-raised` |
 | Poses (8) | `sit` `loaf` `sleep-curl` `belly-up` `stretch` `groom` `sit-up` `dangle` |
 
-Requirements: pixel art, side view **facing right**, on a flat magenta `#FF00FF` background. Any size works if it is a clean multiple of the 48 by 48 grid; the pipeline snaps it down.
+Requirements: pixel art, side view **facing right**, on a flat magenta `#FF00FF` background. Any size works if it is a clean multiple of the 96 by 96 grid; the pipeline snaps it down.
 
 ## Steps
 
@@ -31,7 +31,7 @@ Requirements: pixel art, side view **facing right**, on a flat magenta `#FF00FF`
 
 ## Prompt tip for the owner
 
-Generate one full-body reference first, then reuse it as the reference image for every part, with the same stem: *"pixel art, 48x48 grid, side view facing right, orange tabby cat, `<part>`, flat magenta #FF00FF background, no shadow, no text"*.
+Generate one full-body reference first, then reuse it as the reference image for every part, with the same stem: *"pixel art, 96x96 grid, side view facing right, orange tabby cat, `<part>`, flat magenta #FF00FF background, no shadow, no text"*.
 
 ## Common Mistakes
 

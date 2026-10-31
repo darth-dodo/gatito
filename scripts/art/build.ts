@@ -4,11 +4,11 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import sharp from 'sharp';
 import { COLOURS, SPECIES, type Colour, type Species } from '../../src/brain/types';
-import { PART_NAMES, POSE_NAMES } from '../../src/render/artNames';
+import { ART_CELL, PART_NAMES, POSE_NAMES } from '../../src/render/artNames';
 import { PLACEHOLDER_COATS, writePlaceholders } from './placeholder';
 import { isKey, recolour } from './recolour';
 
-const CELL = 48;
+const CELL = ART_CELL;
 const COLUMNS = 5;
 const MAX_COLOURS = 16;
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -22,7 +22,7 @@ function readRig(species: Species): Rig {
   return JSON.parse(readFileSync(join(ROOT, 'art/rig', `${species}.json`), 'utf8')) as Rig;
 }
 
-/** Removes the magenta key, snaps to the 48 grid (nearest neighbour) and limits to 16 colours. */
+/** Removes the magenta key, snaps to the art grid (nearest neighbour) and limits to 16 colours. */
 async function prepare(file: string, name: string): Promise<Buffer> {
   const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   if (info.width !== info.height) {

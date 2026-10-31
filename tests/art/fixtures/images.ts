@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import sharp from 'sharp';
-import { POSE_NAMES, PART_NAMES } from '../../../src/render/artNames';
+import { ART_CELL, POSE_NAMES, PART_NAMES } from '../../../src/render/artNames';
 
 export type Rgb = [number, number, number];
 
@@ -17,26 +17,26 @@ export async function toPng(pixels: Rgb[], size: number): Promise<Buffer> {
     .toBuffer();
 }
 
-/** 48 by 48 magenta image with a 20 by 20 cat square (outline ring plus fill). */
+/** Art-cell magenta image with a 40 by 40 cat square (outline ring plus fill). */
 export async function magentaCat(): Promise<Buffer> {
   const pixels: Rgb[] = [];
-  for (let y = 0; y < 48; y++) {
-    for (let x = 0; x < 48; x++) {
-      const inside = x >= 10 && x < 30 && y >= 10 && y < 30;
-      const edge = inside && (x === 10 || x === 29 || y === 10 || y === 29);
+  for (let y = 0; y < ART_CELL; y++) {
+    for (let x = 0; x < ART_CELL; x++) {
+      const inside = x >= 20 && x < 60 && y >= 20 && y < 60;
+      const edge = inside && (x === 20 || x === 59 || y === 20 || y === 59);
       pixels.push(edge ? CAT_OUTLINE : inside ? CAT_FILL : MAGENTA);
     }
   }
-  return toPng(pixels, 48);
+  return toPng(pixels, ART_CELL);
 }
 
-/** 480 by 480 image of 10 by 10 blocks; block (bx, by) has one of 8 colours chosen by its position. */
+/** 480 by 480 image of square blocks, one per art-cell pixel; block (bx, by) has one of 8 colours chosen by its position. */
 export async function blocks480(): Promise<Buffer> {
   const pixels: Rgb[] = [];
   for (let y = 0; y < 480; y++) {
     for (let x = 0; x < 480; x++) {
-      const bx = Math.floor(x / 10);
-      const by = Math.floor(y / 10);
+      const bx = Math.floor(x / (480 / ART_CELL));
+      const by = Math.floor(y / (480 / ART_CELL));
       pixels.push(blockColour(bx, by));
     }
   }
@@ -58,14 +58,14 @@ export function blockColour(bx: number, by: number): Rgb {
   return BLOCK_PALETTE[(bx + 3 * by) % BLOCK_PALETTE.length];
 }
 
-/** 48 by 48 image with 40 distinct opaque colours and no magenta. */
+/** Art-cell image with 40 distinct opaque colours and no magenta. */
 export async function fortyColours(): Promise<Buffer> {
   const pixels: Rgb[] = [];
-  for (let i = 0; i < 48 * 48; i++) {
+  for (let i = 0; i < ART_CELL * ART_CELL; i++) {
     const k = i % 40;
     pixels.push([k * 6, 255 - k * 6, (k * 37) % 200]);
   }
-  return toPng(pixels, 48);
+  return toPng(pixels, ART_CELL);
 }
 
 /** Writes a complete source folder of magenta cats, leaving out the named files. */
