@@ -6,6 +6,8 @@ export const TUNING = {
   affectionPerReward: 5,
   activeIdleSeconds: 300,
   underCursorSeconds: 2,
+  /** A napping cat under a still cursor stretches this long, then leaves by underCursorSeconds. */
+  quickStretchSeconds: 0.8,
   strokesForPurr: 3,
   strokeWindowSeconds: 2,
   strokeMinTravelPx: 12,

@@ -121,19 +121,40 @@ describe('PetController', () => {
     expect(r.c.anim().t - t0).toBeLessThanOrEqual(TUNING.maxFrameDeltaSeconds + 1e-9);
   });
 
-  it('never in the way: shifts aside from a still cursor after 2 s', () => {
-    const [seed] = seedsStarting('nap', { affection: 60, energy: 5 });
-    const r = make(seed!, { affection: 60, energy: 5 });
+  it('never in the way: a napping cat stretches quickly, then shifts aside by 2 s', () => {
+    const sleepy = { affection: 60, energy: 5 };
+    const [seed] = seedsStarting('nap', sleepy);
+    const r = make(seed!, sleepy);
     const cursor = { x: r.b.x + r.b.width / 2 + 10, y: r.b.y + r.b.height / 2 };
-    for (let t = 0; t < TUNING.underCursorSeconds - 0.1; t += FRAME) tick(r, FRAME, cursor);
-    expect(r.c.anim().name).toBe('nap');
-    for (let t = 0; t < 0.2; t += FRAME) tick(r, FRAME, cursor);
-    expect(r.c.anim().name).toBe('wander');
+    const wakeAt = TUNING.underCursorSeconds - TUNING.quickStretchSeconds;
+    const seen: { name: string; at: number }[] = [];
+    let t = 0;
+    for (; t < TUNING.underCursorSeconds + 0.05; t += FRAME) {
+      tick(r, FRAME, cursor);
+      const name = r.c.anim().name;
+      if (seen[seen.length - 1]?.name !== name) seen.push({ name, at: t });
+    }
+    expect(seen.map((s) => s.name)).toEqual(['nap', 'stretch', 'wander']);
+    expect(seen[1]!.at).toBeGreaterThanOrEqual(wakeAt - FRAME);
+    expect(seen[1]!.at).toBeLessThan(wakeAt + 0.05);
+    // The quick stretch lasts quickStretchSeconds, so the cat is walking off by underCursorSeconds.
+    expect(seen[2]!.at).toBeLessThanOrEqual(TUNING.underCursorSeconds + FRAME);
     // Cursor is right of centre, so the cat moves left, away from it.
     expect(r.b.vx).toBeLessThan(0);
-    for (let t = 0; t < 4; t += FRAME) tick(r, FRAME, cursor);
+    for (let u = 0; u < 4; u += FRAME) tick(r, FRAME, cursor);
     const inside = cursor.x >= r.b.x && cursor.x <= r.b.x + r.b.width;
     expect(inside).toBe(false);
+  });
+
+  it('never in the way: an awake cat shifts aside after 2 s without stretching', () => {
+    const [seed] = seedsStarting('loaf');
+    const r = make(seed!);
+    const cursor = { x: r.b.x + r.b.width / 2 - 10, y: r.b.y + r.b.height / 2 };
+    for (let t = 0; t < TUNING.underCursorSeconds - 0.1; t += FRAME) tick(r, FRAME, cursor);
+    expect(r.c.anim().name).toBe('loaf');
+    for (let t = 0; t < 0.2; t += FRAME) tick(r, FRAME, cursor);
+    expect(r.c.anim().name).toBe('wander');
+    expect(r.b.vx).toBeGreaterThan(0);
   });
 
   it('a moving cursor (petting) does not push the cat aside', () => {

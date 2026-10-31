@@ -88,6 +88,8 @@ export class PetController {
   private stillFor = 0;
   private lastCursor: Point | null = null;
   private lastX: number;
+  /** Set while a napping cat's quick stretch plays before it shifts aside. */
+  private wokenByCursor = false;
 
   constructor(pet: Pet, body: Body, rng: Rng) {
     this.pet = pet;
@@ -141,6 +143,14 @@ export class PetController {
 
     if (!this.current.ready) this.setUp(ctx);
     this.trackCursor(ctx.cursor, dt);
+    const wakeAfter = TUNING.underCursorSeconds - TUNING.quickStretchSeconds;
+    if (NAPS.has(this.current.name) && this.stillFor > wakeAfter) {
+      // Never snap from sleep to walking: a quick stretch, then out from under the cursor.
+      this.play('stretch', { kind: 'timed', seconds: TUNING.quickStretchSeconds });
+      this.wokenByCursor = true;
+      this.lastX = b.x;
+      return;
+    }
     if (this.stillFor > TUNING.underCursorSeconds && !UNINTERRUPTIBLE.has(this.current.name)) {
       this.shiftAside(ctx);
       this.lastX = b.x;
@@ -198,7 +208,9 @@ export class PetController {
       this.play('stretch', { kind: 'timed', seconds: ANIM_SECONDS.stretch });
       return;
     }
-    if (this.stillFor > TUNING.underCursorSeconds) {
+    const woken = this.wokenByCursor;
+    this.wokenByCursor = false;
+    if (this.stillFor > TUNING.underCursorSeconds || (woken && this.stillFor > 0)) {
       this.shiftAside(ctx);
       return;
     }
@@ -212,6 +224,7 @@ export class PetController {
   }
 
   private play(name: AnimName, plan: Plan): void {
+    this.wokenByCursor = false;
     this.current = { name, picked: name, t: 0, plan, ready: true };
   }
 
