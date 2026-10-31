@@ -1,6 +1,6 @@
-# Gatito Product Specification
+# Windowsill Product Specification
 
-> Little cats that live on your real desktop. Pet them, teach them tricks, and let them nap on your windows while you work.
+> Little cats, and soon dogs, that live on your real desktop. Pet them, teach them tricks, and let them nap on your windows while you work.
 
 ---
 
@@ -9,18 +9,19 @@
 - [Vision](#vision)
 - [Who It's For](#who-its-for)
 - [What We're Building](#what-were-building)
-- [A Day With Gatito](#a-day-with-gatito)
-- [Creating a Gatito](#creating-a-gatito)
+- [A Day With Windowsill](#a-day-with-windowsill)
+- [Creating a Pet](#creating-a-pet)
 - [Living on the Desktop](#living-on-the-desktop)
 - [Mood and Personality](#mood-and-personality)
 - [Behaviours](#behaviours)
 - [Petting and Handling](#petting-and-handling)
 - [Tricks](#tricks)
 - [Gemma (Optional)](#gemma-optional)
-- [The Tray Menu](#the-tray-menu)
+- [The Menu Bar Menu](#the-menu-bar-menu)
 - [Privacy and Data](#privacy-and-data)
 - [Decision Log (Locked)](#decision-log-locked)
 - [UX Principles](#ux-principles)
+- [Art](#art)
 - [Technical Architecture](#technical-architecture)
 - [Roadmap](#roadmap)
 - [Success Metrics](#success-metrics)
@@ -33,7 +34,7 @@ Behaviours carry **bold names**. Tests, tasks and design docs reference those na
 
 ## Vision
 
-Desktop pets used to be a joy: a small creature that shared your screen and made a long day feel less lonely. Gatito brings that back with cats that feel alive. Each gatito has a name, a look, a personality and a mood. It naps, wanders, plays with the other cats and gets into mild trouble when ignored. You pet it, it purrs. You teach it tricks, and it actually learns them, one reward at a time.
+Desktop pets used to be a joy: a small creature that shared your screen and made a long day feel less lonely. Windowsill brings that back with cats, and soon dogs, that feel alive. Each pet has a name, a look, a personality and a mood. It naps, wanders, plays with the other cats and gets into mild trouble when ignored. You pet it, it purrs. You teach it tricks, and it actually learns them, one reward at a time.
 
 **The problem, in three sentences.** Computer work is long and solitary, and most "fun" desktop apps are notifications in disguise. Existing desktop pets are either scripted toys that never change or abandoned projects that no longer run on modern macOS and Windows. Nothing gives you a pet that grows into *yours* through how you treat it.
 
@@ -43,7 +44,7 @@ Desktop pets used to be a joy: a small creature that shared your screen and made
 
 ## Who It's For
 
-**The owner (primary).** A developer who spends long days at a Mac or Windows machine and wants a bit of life on screen. Delighted by small details: a tail flick, a cat that remembers its tricks. Frustration: anything that steals focus, eats CPU or needs an account.
+**The owner (primary).** A developer who spends long days at a Mac and wants a bit of life on screen. Delighted by small details: a tail flick, a cat that remembers its tricks. Frustration: anything that steals focus, eats CPU or needs an account.
 
 **Friends the owner shows it to.** The test audience for the magic moment: "I can pet it and it does a trick I taught it." They should get it within ten seconds of watching.
 
@@ -54,14 +55,15 @@ Desktop pets used to be a joy: a small creature that shared your screen and made
 | Feature | Phase | Description |
 |---------|-------|-------------|
 | **Desktop overlay** | 1 (MVP) | Cats drawn over the desktop on the primary display; clicks pass through everywhere except on a cat |
-| **Create a gatito** | 1 | Choose name, style, colour and personality; up to 6 cats |
+| **Create a pet** | 1 | Choose species, name, style, colour and personality; up to 6 pets |
 | **Floor life** | 1 | Cats walk, sit, groom, stretch, nap and play along the bottom of the screen |
 | **Mood** | 1 | Affection and energy shape what each cat does |
 | **Petting** | 1 | Stroke a cat with the cursor and it purrs |
 | **Pick up and drop** | 1 | Drag a cat; it dangles, falls and lands on its feet |
 | **Tricks with the cue menu** | 1 | Right-click cue ring; cats learn cue to trick pairings from rewards |
 | **Pixel style** | 1 | The first art style, with colour variants |
-| **Memory** | 1 | Every gatito and what it learned survives restarts |
+| **Memory** | 1 | Every pet and what it learned survives restarts |
+| **Dogs** | 2 | A second species: same mood, petting, tricks and personalities as cats, with dog art and dog reactions |
 | **Window perching** | 2 | Cats climb onto and walk along the top edges of your open windows |
 | **Cursor play** | 2 | Cats watch the cursor and pounce on fast movement |
 | **Social play** | 2 | Cats chase, play-fight, groom each other and pile up to nap |
@@ -75,44 +77,63 @@ Desktop pets used to be a joy: a small creature that shared your screen and made
 
 ---
 
-## A Day With Gatito
+## A Day With Windowsill
 
-1. **Morning.** You start your computer. Gatito launches at login (opt-in) and your cats appear along the bottom of the screen, stretching awake.
+1. **Morning.** You start your computer. Windowsill launches at login (opt-in) and your cats appear along the bottom of the screen, stretching awake.
 2. **Deep work.** Mochi (cosy) naps by the dock. Pixel (curious) wanders over, sits, grooms a paw, wanders back. Nothing asks for your attention; your clicks go straight through to your apps.
 3. **A break.** You stroke Mochi with the cursor. She purrs, little hearts rise, and she rolls onto her back.
 4. **Training.** You right-click Pixel and choose the whistle. Pixel guesses: a spin. That's what you wanted, so you pet him straight away. After a few rounds the whistle means spin.
 5. **Busy afternoon.** You forget the cats for two hours. Pixel's affection drops and he gets the zoomies, then sits near your cursor and stares. A quick stroke and he's sweet again.
-6. **Presenting.** You choose **Nap time** from the tray and all cats curl up and fade out until you bring them back.
+6. **Presenting.** You choose **Nap time** from the menu bar and all cats curl up and fade out until you bring them back.
 7. **Tomorrow.** Everything is remembered: names, moods, every learned trick.
 
 ---
 
-## Creating a Gatito
+## Creating a Pet
 
-**New gatito** opens a small window from the tray menu with a live preview of the cat as you choose:
+**New pet** opens a small window from the menu bar with a live preview of the pet as you choose:
 
 | Choice | Options |
 |--------|---------|
+| **Species** | Cat (Phase 1). Dog (Phase 2) |
 | **Name** | Free text, up to 20 characters; required |
 | **Style** | Pixel (Phase 1). Soft and cute, Ink doodle, Silhouette (Phase 3) |
-| **Colour** | Orange tabby, black, white, grey, tuxedo, calico, Siamese |
+| **Colour** | Cats: orange tabby, black, white, grey, tuxedo, calico, Siamese. Dogs: golden, black, white, brown, spotted, tricolour, husky grey |
 | **Personality** | Cosy, Curious, Mischievous, Social |
 
-The new cat drops in from the top of the screen and lands on the floor. **Edit gatito** changes name, colour or style later; personality is fixed at birth, like a real cat. **Rehome gatito** removes one after a confirmation.
+The new pet drops in from the top of the screen and lands on the floor. **Edit pet** changes name, colour or style later; species and personality are fixed at birth. **Rehome pet** removes one after a confirmation.
 
-**Cat limit.** At most 6 gatitos at once.
+**Pet limit.** At most 6 pets at once, cats and dogs together.
 
-**First run.** With no cats saved, Gatito opens **New gatito** automatically.
+**First run.** With no pets saved, Windowsill opens **New pet** automatically.
+
+---
+
+## Dogs
+
+Dogs arrive in Phase 2. A dog is the same pet with a different body: species is chosen at creation and everything else is shared (name, style, personality, mood and its clock, petting, pick up and drop, the cue ring, the five tricks, memory, Gemma). Phase 1 builds the engine species-aware so dogs are an art and reaction task, not an engine change.
+
+Where a dog differs, it differs only in how it looks and reacts:
+
+| Cat | Dog |
+|-----|-----|
+| **Purr** with rising hearts | **Wag**: the whole back end wiggles, hearts rise |
+| **Loaf** | **Curl nap**: nose tucked under tail |
+| **Groom** a paw | **Scratch** behind an ear |
+| Tail flick in **Idle sit** | Tail thump in **Idle sit** |
+| **Belly up** | **Belly up** (same) |
+
+Dogs make no sounds, like cats in Phase 1.
 
 ---
 
 ## Living on the Desktop
 
-**Overlay.** A transparent, borderless, always-on-top layer covers the primary display. It never takes keyboard focus and never appears in the Dock, the taskbar or Alt-Tab.
+**Overlay.** A transparent, borderless, always-on-top layer covers the primary display. It never takes keyboard focus and never appears in the Dock or the Cmd-Tab switcher, and it shows on every Space.
 
 **Click-through.** Clicks pass through to the app underneath everywhere except on a cat. Hovering a cat makes it interactive; moving off makes everything pass through again with no visible delay.
 
-**The floor.** Cats live on the bottom edge of the usable screen area: just above the macOS Dock or Windows taskbar, whatever their size and position.
+**The floor.** Cats live on the bottom edge of the usable screen area: just above the Dock, whatever its size, and above it on the left or right when the Dock sits on a side. When the Dock auto-hides, the floor is the screen's bottom edge.
 
 **Never in the way.** A cat never stays under a still cursor for more than 2 seconds *(tunable)*; it shifts aside. Cats never move, resize or focus your real windows.
 
@@ -131,9 +152,9 @@ Each cat has two mood meters, 0 to 100:
 | **Affection** | Petting, rewarded tricks | Active time without attention (about 10 per active hour *(tunable)*) |
 | **Energy** | Napping | Walking, playing, tricks |
 
-**Mood clock.** Mood and trick fading only move on **active time**: Gatito running, the user active (input within the last 5 minutes *(tunable)*, using the OS idle time), and **Nap time** off. Time while the app is closed, the machine is asleep or locked, the user is away, or the cats are napping by request does not count. So neglect means *forgetting the cats while you work*, cats do not wake up grumpy every morning, and a holiday does not wipe their tricks. The save file therefore stores meter values, not timestamps. *(Claude's call.)*
+**Mood clock.** Mood and trick fading only move on **active time**: Windowsill running, the user active (input within the last 5 minutes *(tunable)*, using the OS idle time), and **Nap time** off. Time while the app is closed, the machine is asleep or locked, the user is away, or the cats are napping by request does not count. So neglect means *forgetting the cats while you work*, cats do not wake up grumpy every morning, and a holiday does not wipe their tricks. The save file therefore stores meter values, not timestamps. *(Claude's call.)*
 
-**Showing mood.** Mood shows mainly through *which* behaviours a cat picks and how often (a happy cat purrs, loafs and seeks you out; a grumpy one stares and gets zoomies), plus a small set of mood poses: **Content sit** (soft eyes, slow tail) and **Grumpy sit** (flattened ears, flicking tail). Ordinary animations are not drawn in multiple mood versions. There are no visible bars or numbers in Phase 1. *(Claude's call, to keep the art budget small.)*
+**Showing mood.** Mood shows mainly through *which* behaviours a cat picks and how often (a happy cat purrs, loafs and seeks you out; a grumpy one stares and gets zoomies), and through the cut-out parts: ear angle and tail speed follow mood continuously, so **Content sit** (soft ears, slow tail) and **Grumpy sit** (flattened ears, flicking tail) are the same sit pose with different part settings, not separate drawings. There are no visible bars or numbers in Phase 1. *(Claude's call, to keep the art budget small.)*
 
 **Personality weights.** Each personality shifts how likely each behaviour is:
 
@@ -210,7 +231,7 @@ Every behaviour has a short transition so a cat never snaps between poses.
 
 ## Gemma (Optional)
 
-Gatito works fully without any AI. If [Ollama](https://ollama.com) is running locally with a Gemma model pulled, Gemma features switch on; if not, they quietly stay off.
+Windowsill works fully without any AI. If [Ollama](https://ollama.com) is running locally with a Gemma model pulled, Gemma features switch on; if not, they quietly stay off.
 
 | Feature | Phase | Behaviour without Gemma |
 |---------|-------|-------------------------|
@@ -221,28 +242,28 @@ Gatito works fully without any AI. If [Ollama](https://ollama.com) is running lo
 
 **Thought bubbles.** At most one bubble per cat every 10 minutes *(tunable)*, never during a fullscreen app. A thought is under 8 words, lowercase, in character for the cat's name, personality, mood and what it is doing. Each request sends only those facts. No screen content, window titles or typing ever go to the model.
 
-**Setup.** The tray menu shows Gemma's status (on, off, not found) and which model is in use. The default model is the smallest Gemma available in Ollama; you can change it in settings.
+**Setup.** The menu bar menu shows Gemma's status (on, off, not found) and which model is in use. The default model is the smallest Gemma available in Ollama; you can change it in settings.
 
 ---
 
-## The Tray Menu
+## The Menu Bar Menu
 
-A menu-bar icon on macOS and a system-tray icon on Windows: a small cat head.
+A menu-bar icon: a small cat head.
 
-- **New gatito…**
+- **New pet…**
 - One entry per cat: **Edit…**, **Call over** (walks to the middle of the screen), **Rehome…**
 - **Nap time** (toggle): all cats curl up and fade out; toggle again to wake them
 - **Gemma**: status and model
 - **Launch at login** (toggle, off by default)
-- **Quit Gatito**
+- **Quit Windowsill**
 
 ---
 
 ## Privacy and Data
 
-- **No accounts, no telemetry, no analytics.** Gatito never phones home.
+- **No accounts, no telemetry, no analytics.** Windowsill never phones home.
 - **The only network traffic is to the local Ollama server**, and only if Gemma is on.
-- **Saved state** is one JSON file in the OS app-data folder: cats, moods, learned pairings and settings. Deleting it resets Gatito.
+- **Saved state** is one JSON file in the OS app-data folder: cats, moods, learned pairings and settings. Deleting it resets Windowsill.
 - **Window positions** (Phase 2, for perching) are read as rectangles only, never titles or contents.
 
 ---
@@ -251,10 +272,11 @@ A menu-bar icon on macOS and a system-tray icon on Windows: a small cat head.
 
 | Decision | Value | Why |
 |----------|-------|-----|
-| Name | Gatito | Owner's choice: Spanish for "little cat" |
+| Name | Windowsill (renamed from Gatito, 2026-10-31) | Owner's choice: pets that sit on your windows; covers cats and dogs |
 | Form | Cats live on the real desktop, not in an app window | The whole point: company while you work |
-| Platforms | macOS and Windows | Owner's machines |
-| Creation choices | Name, style, colour, personality | Owner's choice; each cat is individual |
+| Platforms | macOS only (Windows dropped 2026-10-31) | Owner's choice; one platform done well |
+| Creation choices | Species, name, style, colour, personality | Owner's choice; each pet is individual |
+| Species | Cats in Phase 1; dogs in Phase 2, sharing every system except art and a few reactions | Owner's choice (2026-10-31): "nothing" should feel different about a dog beyond its body |
 | Personalities | Cosy, Curious, Mischievous, Social | The four behaviour sets the owner liked |
 | Styles | Pixel, Soft and cute, Ink doodle, Silhouette; chosen per cat | Owner wants all four; pixel first because it is cheapest to animate well |
 | Trick cue (MVP) | Right-click cue ring | Owner's pick for the MVP; cursor-wave cues later |
@@ -264,7 +286,8 @@ A menu-bar icon on macOS and a system-tray icon on Windows: a small cat head.
 | Mischief limit | Visual and playful only; never moves, focuses or blocks real windows | Annoying would be a failure even if clever |
 | Mood clock | Only active time counts: app running, user active, Nap time off | Neglect means forgetting them while you work, not being away (Claude's call) |
 | Mood display | Through behaviour choice plus two mood poses, not mood variants of every animation | Keeps the art budget small (Claude's call) |
-| Stack | Tauri 2 (Rust) with a TypeScript canvas front end | Claude's call: small and light when running all day, suits sprites, Rust reaches OS window data |
+| Stack | Tauri 2 (Rust) with TypeScript and **PixiJS 8** for rendering and animation | Owner's choice of Tauri plus an animation library (2026-10-31); PixiJS is Claude's pick: sprites, meshes and particles without a game framework |
+| Art | Owner-made GenAI pixel art as cut-out parts and key poses, animated in code | Image models cannot keep animation frames consistent; code-driven parts can (owner's choice of GenAI, Claude's call on cut-out) |
 
 ---
 
@@ -279,17 +302,60 @@ A menu-bar icon on macOS and a system-tray icon on Windows: a small cat head.
 
 ---
 
+## Art
+
+The owner makes the art with GenAI image tools, in **pixel art**. Pets are **cut-out puppets**: separate parts that the code moves (tail swish, blinks, ears, walking legs, breathing), plus a few whole-body **key poses** for shapes parts cannot make. Image models are good at single images and bad at consistent animation frames, so all motion comes from code.
+
+**Grid and view.** Every image is pixel art on a **48 by 48 grid**, side view, **facing right** (the code mirrors it to face left), shown at 2x on screen *(tunable)*. Models rarely output true transparency, so images are generated on a flat **magenta `#FF00FF`** background that the art pipeline removes.
+
+**Parts (the standing puppet), per species and coat:**
+
+| Part | Notes |
+|------|-------|
+| `body` | Torso only: no head, legs or tail |
+| `head` | Facing right, without ears or eyes |
+| `ear-near`, `ear-far` | Rotate with mood |
+| `eyes-open`, `eyes-closed` | Swapped for blinks and sleep |
+| `tail` | Rotates and sways from its base |
+| `leg-front-near`, `leg-front-far`, `leg-back-near`, `leg-back-far` | Swing for walking and zoomies |
+| `paw-raised` | For **High five** |
+
+**Key poses (whole body, without the tail, which is layered on):**
+
+| Pose | Used for |
+|------|----------|
+| `sit` | **Idle sit**, **Content sit**, **Grumpy sit**, **Stare**, waiting for a cue |
+| `loaf` | **Loaf** |
+| `sleep-curl` | **Nap**, **Cuddle nap**; rotated for **Chase tail** |
+| `belly-up` | **Belly up**, the middle of **Roll over** |
+| `stretch` | **Stretch** |
+| `groom` | **Groom** |
+| `sit-up` | **Sit up** |
+| `dangle` | **Pick up** |
+
+**Spin** and **Roll over** are made in code by flipping and rotating the puppet and poses.
+
+**Coats.** The owner generates the full set once in **orange tabby**. The pipeline recolours it to **black**, **white** and **grey** by palette mapping. **Tuxedo**, **calico** and **Siamese** have patterns, so each is generated as its own full set. A coat only appears in **New pet** once its set exists.
+
+**Consistency tip.** Generate one full-body reference cat first, then pass it as the reference image for every part and pose, with the same prompt stem: *"pixel art, 48x48 grid, side view facing right, orange tabby cat, <part>, flat magenta #FF00FF background, no shadow, no text"*.
+
+**Art pipeline.** `npm run art` reads `art/source/<species>/<coat>/<name>.png`, removes the magenta, snaps to the 48 by 48 grid with nearest-neighbour scaling, limits each image to 16 colours, trims, and packs a PixiJS sprite sheet per species and coat into `src/assets/atlas/`. Part pivots (for example, the tail's base) come from `art/rig/<species>.json`. It fails with a list of anything missing or the wrong size.
+
+**Placeholders.** Until the owner's art exists, the pipeline produces simple code-drawn placeholder parts with the same names, so everything can be built and tested; dropping real images in needs no code change.
+
+---
+
 ## Technical Architecture
 
 - **Shell**: Tauri 2. One transparent, undecorated, always-on-top, non-focusable window sized to the primary display's full bounds; hidden from Dock, taskbar and Alt-Tab.
 - **Click-through**: the window ignores cursor events by default. Rust polls the global cursor position about 60 times a second and compares it against cat hit boxes reported by the front end; when the cursor is over a cat, cursor events are enabled, and they're disabled again when it leaves. Tauri's click-through is all or nothing per window, which is why this polling is needed.
-- **Floor**: the usable screen area (excluding Dock or taskbar) comes from the OS through Rust and is sent to the front end on launch and whenever it changes.
-- **Front end**: TypeScript drawing on one canvas with a fixed-step simulation loop. Pure modules for the cat brain (mood, behaviour choice, learning) with no DOM access, so they are unit-testable.
-- **Art**: sprite sheets per style, one row per animation. Colours are palette swaps of one base sheet per style. Sprites scale by whole numbers so pixel art stays crisp.
-- **Windows for forms**: **New gatito** and settings are ordinary small Tauri windows.
+- **Floor**: the usable screen area (excluding the Dock and menu bar) comes from the OS through Rust and is sent to the front end on launch and whenever it changes.
+- **Front end**: TypeScript with a PixiJS 8 stage (one container per pet: puppet parts, poses and particles for hearts, "z" and sparkles) and a fixed-step simulation loop. Pure modules for the cat brain (mood, behaviour choice, learning) with no DOM access, so they are unit-testable.
+- **Art**: one PixiJS sprite sheet per species and coat, built by the art pipeline (see [Art](#art)). Pixel art scales by whole numbers with nearest-neighbour filtering so it stays crisp.
+- **Windows for forms**: **New pet** and settings are ordinary small Tauri windows.
 - **Persistence**: one versioned JSON file in the app-data folder, written on change (debounced) and on quit.
 - **Gemma**: HTTP calls from Rust to `http://localhost:11434`, with short timeouts; any failure falls back silently.
-- **Window perching (Phase 2)**: Rust reads visible top-level window rectangles (macOS `CGWindowListCopyWindowInfo`, Windows `EnumWindows` with DWM frame bounds) a few times a second.
+- **Window perching (Phase 2)**: Rust reads visible top-level window rectangles (`CGWindowListCopyWindowInfo`) a few times a second.
 - **Resource budget**: see [Success Metrics](#success-metrics).
 
 ---
@@ -298,11 +364,11 @@ A menu-bar icon on macOS and a system-tray icon on Windows: a small cat head.
 
 | Phase | Focus | Status |
 |-------|-------|--------|
-| **Phase 1 (MVP)** | Overlay, click-through, create cats, floor behaviours, mood, petting, pick up and drop, cue ring tricks, pixel style, memory, tray menu, macOS and Windows builds | ⏳ Planned |
-| **Phase 2** | Window perching, cursor play, social play, fullscreen respect, Gemma thought bubbles | ⏳ Planned |
+| **Phase 1 (MVP)** | Overlay, click-through, create cats, floor behaviours, mood, petting, pick up and drop, cue ring tricks, pixel style, memory, menu-bar menu, macOS build; species-aware engine | ⏳ Planned |
+| **Phase 2** | Dogs, window perching, cursor play, social play, fullscreen respect, Gemma thought bubbles | ⏳ Planned |
 | **Phase 3** | Three more styles, talk to them, name and backstory help, daily diary, cursor-wave cues, multi-monitor | ⏳ Planned |
 
-Phase 1 ships in vertical slices, each ending with something you can see on the desktop: one cat walks on the floor; you can click through around it; petting; pick up and drop; create and save cats; mood; tricks; tray menu; Windows build.
+Phase 1 ships in vertical slices, each ending with something you can see on the desktop: one cat walks on the floor; you can click through around it; petting; pick up and drop; create and save cats; mood; tricks; menu-bar menu; macOS release build.
 
 ### Future Ideas
 
@@ -310,13 +376,14 @@ Phase 1 ships in vertical slices, each ending with something you can see on the 
 - Opt-in purring and meow sounds
 - Seasonal accessories (a scarf in winter)
 - Sharing a cat's learned tricks as a file
+- Rive for the smooth styles (Soft and cute, Silhouette): vector pets with mood-blended state machines
 
 ---
 
 ## Success Metrics
 
 - **Ten-second delight**: a friend watching gets the pet-and-trick moment within 10 seconds.
-- **Invisible when working**: zero clicks lost to the overlay outside a cat, verified by a manual checklist on both OSes.
+- **Invisible when working**: zero clicks lost to the overlay outside a cat, verified by a manual checklist on macOS.
 - **Light**: under 2 % average CPU and under 150 MB memory with 3 cats, without Gemma.
 - **Teachable**: a willing cat learns a trick in 5 to 8 rewarded rounds.
 - **Remembers**: names, moods and learned tricks survive a restart and an OS reboot.
@@ -330,7 +397,7 @@ Phase 1 ships in vertical slices, each ending with something you can see on the 
 - **Real-window mischief**: no moving, closing or focusing your apps, ever.
 - **Monetisation, ads, a shop**: no.
 - **Notifications or nagging**: a neglected cat gets naughty on screen; it never sends a notification.
-- **Mobile or Linux (for now)**: macOS and Windows only.
+- **Windows, Linux or mobile**: macOS only.
 
 ---
 
@@ -338,8 +405,7 @@ Phase 1 ships in vertical slices, each ending with something you can see on the 
 
 Left to whoever builds it, within this spec:
 
-- Exact sprite sizes, frame counts and the on-screen scale of a cat.
-- How the pixel art is made (hand-drawn sheets, or code-generated placeholders the owner can replace).
+- The look of placeholder art, part pivots and the exact motion curves of code-driven animation.
 - Animation timings, transition details and exact behaviour weights.
 - Code-signing and notarisation for distribution (unsigned local builds are fine for Phase 1).
 - Test tooling, within the rule that the cat brain is unit-tested.
