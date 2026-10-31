@@ -21,7 +21,7 @@ function testPet(): Pet {
     name: 'Mochi',
     style: 'pixel',
     colour: 'orange-tabby',
-    personality: 'cosy',
+    personality: 'curious',
     mood: { affection: 60, energy: 70 },
     pairings: newPairings(),
     learned: {},
