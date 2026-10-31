@@ -1,6 +1,53 @@
-use tauri::{AppHandle, WebviewUrl, WebviewWindowBuilder};
+use crate::screen::Rect;
+use serde::{Deserialize, Serialize};
+use std::sync::Mutex;
+use std::time::Duration;
+use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
+
+/// How often the cursor is polled for hit testing.
+const POLL_HZ: u64 = 60;
+/// How often the `cursor` event is emitted to the front end.
+const CURSOR_EMIT_HZ: u64 = 20;
+
+/// A point in logical pixels, relative to the overlay window.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Point {
+    pub x: f64,
+    pub y: f64,
+}
+
+/// Pet hit boxes (logical px, window-relative), set by the front end.
+#[derive(Default)]
+pub struct HitBoxes(Mutex<Vec<Rect>>);
+
+/// True when `p` is inside any box; edges are inclusive.
+pub fn cursor_hits(boxes: &[Rect], p: Point) -> bool {
+    boxes
+        .iter()
+        .any(|b| p.x >= b.x && p.x <= b.x + b.width && p.y >= b.y && p.y <= b.y + b.height)
+}
+
+/// Convert a physical screen cursor position to logical window coordinates.
+pub fn to_window_space(
+    cursor_physical: (f64, f64),
+    window_origin_physical: (f64, f64),
+    scale_factor: f64,
+) -> Point {
+    Point {
+        x: (cursor_physical.0 - window_origin_physical.0) / scale_factor,
+        y: (cursor_physical.1 - window_origin_physical.1) / scale_factor,
+    }
+}
+
+#[tauri::command]
+pub fn set_hitboxes(state: State<HitBoxes>, boxes: Vec<Rect>) {
+    if let Ok(mut guard) = state.0.lock() {
+        *guard = boxes;
+    }
+}
 
 /// Transparent, borderless, always-on-top window covering the primary monitor.
+/// It starts ignoring cursor events; the poll below enables them over pets.
 pub fn create(app: &AppHandle) -> tauri::Result<()> {
     let monitor = app
         .primary_monitor()?
@@ -9,7 +56,7 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
     let pos = monitor.position();
     let size = monitor.size();
 
-    WebviewWindowBuilder::new(app, "overlay", WebviewUrl::App("index.html".into()))
+    let window = WebviewWindowBuilder::new(app, "overlay", WebviewUrl::App("index.html".into()))
         .title("Windowsill")
         .position(f64::from(pos.x) / scale, f64::from(pos.y) / scale)
         .inner_size(
@@ -23,5 +70,86 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
         .shadow(false)
         .visible_on_all_workspaces(true)
         .build()?;
+    window.set_ignore_cursor_events(true)?;
     Ok(())
+}
+
+/// Poll the cursor at `POLL_HZ`: toggle click-through only when the hit result
+/// changes, and emit `cursor` at `CURSOR_EMIT_HZ`.
+pub fn start_cursor_poll(app: AppHandle) {
+    std::thread::spawn(move || {
+        let emit_every = (POLL_HZ / CURSOR_EMIT_HZ).max(1);
+        let mut tick: u64 = 0;
+        let mut ignoring = true;
+        loop {
+            std::thread::sleep(Duration::from_millis(1000 / POLL_HZ));
+            let Some(window) = app.get_webview_window("overlay") else {
+                continue;
+            };
+            let (Ok(cursor), Ok(origin)) = (app.cursor_position(), window.outer_position()) else {
+                continue;
+            };
+            let scale = window.scale_factor().unwrap_or(1.0);
+            let point = to_window_space(
+                (cursor.x, cursor.y),
+                (f64::from(origin.x), f64::from(origin.y)),
+                scale,
+            );
+            let hit = app
+                .state::<HitBoxes>()
+                .0
+                .lock()
+                .map(|boxes| cursor_hits(&boxes, point))
+                .unwrap_or(false);
+            if ignoring == hit && window.set_ignore_cursor_events(!hit).is_ok() {
+                ignoring = !hit;
+            }
+            if tick.is_multiple_of(emit_every) {
+                let _ = app.emit("cursor", point);
+            }
+            tick = tick.wrapping_add(1);
+        }
+    });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn boxes() -> Vec<Rect> {
+        vec![Rect {
+            x: 100.0,
+            y: 200.0,
+            width: 64.0,
+            height: 64.0,
+        }]
+    }
+
+    #[test]
+    fn cursor_hits_inside_box() {
+        assert!(cursor_hits(&boxes(), Point { x: 120.0, y: 230.0 }));
+    }
+
+    #[test]
+    fn cursor_hits_false_outside_box() {
+        assert!(!cursor_hits(&boxes(), Point { x: 99.0, y: 230.0 }));
+        assert!(!cursor_hits(&boxes(), Point { x: 120.0, y: 265.0 }));
+    }
+
+    #[test]
+    fn cursor_hits_false_with_no_boxes() {
+        assert!(!cursor_hits(&[], Point { x: 0.0, y: 0.0 }));
+    }
+
+    #[test]
+    fn cursor_hits_true_on_edges() {
+        assert!(cursor_hits(&boxes(), Point { x: 100.0, y: 200.0 }));
+        assert!(cursor_hits(&boxes(), Point { x: 164.0, y: 264.0 }));
+    }
+
+    #[test]
+    fn to_window_space_subtracts_origin_and_scales() {
+        let p = to_window_space((700.0, 450.0), (100.0, 50.0), 2.0);
+        assert_eq!(p, Point { x: 300.0, y: 200.0 });
+    }
 }

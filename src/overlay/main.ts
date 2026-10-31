@@ -8,7 +8,9 @@ document.body.appendChild(square);
 
 function place(floor: Floor): void {
   square.style.left = `${floor.x}px`;
-  square.style.top = `${floor.bottom - SQUARE}px`;
+  const top = floor.bottom - SQUARE;
+  square.style.top = `${top}px`;
+  void ipc.setHitboxes([{ x: floor.x, y: top, width: SQUARE, height: SQUARE }]);
 }
 
 void ipc.getFloor().then(place);
