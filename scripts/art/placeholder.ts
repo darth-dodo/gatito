@@ -2,9 +2,10 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import type { Colour, Species } from '../../src/brain/types';
-import { PART_NAMES, POSE_NAMES } from '../../src/render/artNames';
+import { ART_CELL, PART_NAMES, POSE_NAMES } from '../../src/render/artNames';
 import { COAT_PALETTES, KEPT_COLOURS, type Rgb } from './recolour';
 
+/** Placeholders are designed on a 48 grid and scaled up 2x (nearest neighbour) into the art cell. */
 const SIZE = 48;
 const MAGENTA: Rgb = [255, 0, 255];
 const [OUTLINE, EYE, , NOSE] = KEPT_COLOURS;
@@ -82,6 +83,7 @@ class Canvas {
     const raw = Buffer.alloc(SIZE * SIZE * 3);
     this.px.forEach((p, i) => raw.set(p, i * 3));
     return sharp(raw, { raw: { width: SIZE, height: SIZE, channels: 3 } })
+      .resize(ART_CELL, ART_CELL, { kernel: 'nearest' })
       .png({ compressionLevel: 9 })
       .toBuffer();
   }
@@ -237,7 +239,7 @@ function inkFor(coat: Colour): Ink {
   return { dark: palette[0], mid: palette[1], light: palette[2], cream: palette[3] };
 }
 
-/** Writes one magenta-background 48 by 48 PNG per part and pose into `dir`, in the coat's colours. */
+/** Writes one magenta-background art-cell PNG per part and pose into `dir`, in the coat's colours. */
 export async function writePlaceholders(_species: Species, coat: Colour, dir: string): Promise<void> {
   const ink = inkFor(coat);
   mkdirSync(dir, { recursive: true });

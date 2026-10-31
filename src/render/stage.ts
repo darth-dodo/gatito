@@ -11,6 +11,8 @@ const TRANSITION_MS = 150;
 const Z_LIGHT = 0xf4f1ff;
 const Z_SHADOW = 0x2a2140;
 const Z_ROWS = ['####', '..#.', '.#..', '####'] as const;
+/** Size of one "z" pixel in art pixels. */
+const Z_BLOCK = 2;
 
 interface Look {
   root: Container;
@@ -31,11 +33,11 @@ interface Entry {
 
 function zGlyph(): GraphicsContext {
   const g = new GraphicsContext();
-  const half = Z_ROWS.length / 2;
-  for (const [colour, shift] of [[Z_SHADOW, 1], [Z_LIGHT, 0]] as const) {
+  const half = (Z_ROWS.length * Z_BLOCK) / 2;
+  for (const [colour, shift] of [[Z_SHADOW, Z_BLOCK], [Z_LIGHT, 0]] as const) {
     Z_ROWS.forEach((row, y) => {
       [...row].forEach((ch, x) => {
-        if (ch === '#') g.rect(x - half + shift, y - half + shift, 1, 1);
+        if (ch === '#') g.rect(x * Z_BLOCK - half + shift, y * Z_BLOCK - half + shift, Z_BLOCK, Z_BLOCK);
       });
     });
     g.fill(colour);

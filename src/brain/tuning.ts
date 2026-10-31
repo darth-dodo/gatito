@@ -33,5 +33,5 @@ export const TUNING = {
   gravityPxPerS2: 2400,
   simStepSeconds: 1 / 60,
   /** Whole-number screen scale for the 48 px pixel art. */
-  renderScale: 2,
+  renderScale: 1,
 } as const;

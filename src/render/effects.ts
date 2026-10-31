@@ -9,9 +9,9 @@ export interface FloatingZ {
 
 const Z_COUNT = 3;
 const Z_SECONDS = 2.4;
-const Z_ORIGIN = { x: -4, y: -10 } as const;
-const Z_RISE_PX = 16;
-const Z_DRIFT_PX = 6;
+const Z_ORIGIN = { x: -8, y: -20 } as const;
+const Z_RISE_PX = 32;
+const Z_DRIFT_PX = 12;
 const Z_GROW = 0.5;
 
 /** Pure: the "z"s above a napping cat at time t, staggered so one rises every Z_SECONDS / Z_COUNT. */

@@ -1,7 +1,7 @@
 import rigJson from '../../art/rig/cat.json';
 import type { BehaviourName } from '../brain/behaviour';
 import type { Mood, Trick } from '../brain/types';
-import { PART_NAMES, type PartName, type PoseName } from './artNames';
+import { ART_CELL, PART_NAMES, type PartName, type PoseName } from './artNames';
 
 /** Every animation a pet can play: its behaviours, the tricks, and the handling and petting moments. */
 export type AnimName =
@@ -41,14 +41,14 @@ interface RigPart {
   offset: [number, number];
 }
 
-export const CELL = rigJson.cell;
+export const CELL = ART_CELL;
 export const RIG = rigJson.parts as Record<PartName, RigPart>;
 
 /**
- * The pet's box inside its 48 px cell, in cell pixels: the body rect the world and hit boxes use.
+ * The pet's box inside its art cell, in cell pixels: the body rect the world and hit boxes use.
  * Symmetric about the cell centre so mirroring keeps the box in place.
  */
-export const CAT_BOX = { left: 3, top: 4, right: 45, bottom: 44 } as const;
+export const CAT_BOX = { left: 6, top: 8, right: 90, bottom: 88 } as const;
 
 /** Lengths in seconds of the animations that end by themselves. */
 export const ANIM_SECONDS = {
@@ -104,10 +104,10 @@ const BLINK_SECONDS = 0.15;
 const WALK_STEP_HZ = 2;
 const ZOOMIES_STEP_HZ = 4.5;
 const LEG_SWING = 0.45;
-const WALK_BOB_PX = 0.5;
+const WALK_BOB_PX = 1;
 
 // Breathing, in cell pixels.
-const BREATH_PX = 0.5;
+const BREATH_PX = 1;
 const BREATH_SECONDS = 2.4;
 const NAP_BREATH_SECONDS = 3.4;
 
@@ -119,31 +119,31 @@ const CHASE_TAIL_TURNS = 2;
 const HIGH_FIVE_FROM = 0.2;
 const HIGH_FIVE_TO = 0.8;
 const PURR_LEAN = 0.06;
-const PURR_SHAKE_PX = 0.25;
+const PURR_SHAKE_PX = 0.5;
 const PURR_SHAKE_HZ = 14;
 const DANGLE_SWAY = 0.12;
 const DANGLE_SWAY_HZ = 0.8;
 const FALL_LEG_SPREAD = 0.5;
-const LAND_SQUASH_PX = 1;
+const LAND_SQUASH_PX = 2;
 
 /** Where the tail base sits on each key pose, and its resting rotation (the tail art points up). */
 const POSE_TAIL: Record<PoseName, { x: number; y: number; rotation: number; swing: number }> = {
-  sit: { x: -9, y: 11, rotation: -0.9, swing: 1 },
-  loaf: { x: -14, y: 8, rotation: -0.9, swing: 0.6 },
-  'sleep-curl': { x: 18, y: 10, rotation: -1.6, swing: 0.3 },
-  'belly-up': { x: -13, y: 7, rotation: -0.6, swing: 1 },
-  stretch: { x: -14, y: -4, rotation: 0.2, swing: 0.6 },
-  groom: { x: -9, y: 11, rotation: -0.9, swing: 0.6 },
-  'sit-up': { x: -10, y: 12, rotation: -1, swing: 1 },
-  dangle: { x: 2, y: 12, rotation: Math.PI, swing: 1.4 },
+  sit: { x: -18, y: 22, rotation: -0.9, swing: 1 },
+  loaf: { x: -28, y: 16, rotation: -0.9, swing: 0.6 },
+  'sleep-curl': { x: 36, y: 20, rotation: -1.6, swing: 0.3 },
+  'belly-up': { x: -26, y: 14, rotation: -0.6, swing: 1 },
+  stretch: { x: -28, y: -8, rotation: 0.2, swing: 0.6 },
+  groom: { x: -18, y: 22, rotation: -0.9, swing: 0.6 },
+  'sit-up': { x: -20, y: 24, rotation: -1, swing: 1 },
+  dangle: { x: 4, y: 24, rotation: Math.PI, swing: 1.4 },
 };
 
 /** The sit pose is drawn without ears and eyes; these parts are always layered on it. Other poses keep their own. */
 const SIT_OVERLAY: Partial<Record<PartName, [number, number]>> = {
-  'ear-near': [5, -17],
-  'ear-far': [10, -17],
-  'eyes-open': [10, -15],
-  'eyes-closed': [10, -15],
+  'ear-near': [10, -34],
+  'ear-far': [20, -34],
+  'eyes-open': [20, -30],
+  'eyes-closed': [20, -30],
 };
 
 const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));

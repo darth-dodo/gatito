@@ -143,7 +143,7 @@ describe('rigPose', () => {
 
   it('places puppet parts at their rig pivots when still', () => {
     const f = rigPose('fall', 0, m);
-    expect(f.parts.head).toMatchObject({ x: 8, y: -6 });
+    expect(f.parts.head).toMatchObject({ x: 16, y: -12 });
   });
 });
 
