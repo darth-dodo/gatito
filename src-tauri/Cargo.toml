@@ -1,0 +1,26 @@
+[package]
+name = "windowsill"
+version = "0.1.0"
+description = "Little pets that live on your Mac's desktop"
+authors = ["darth-dodo"]
+edition = "2024"
+rust-version = "1.99"
+
+[lib]
+name = "windowsill_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["macos-private-api"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true
