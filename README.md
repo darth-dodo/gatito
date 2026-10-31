@@ -12,6 +12,10 @@
 
 ![Windowsill: pixel cats and a dog on a Mac desktop, one cat perched on a code window, one napping above the Dock, one being petted, and a golden dog wagging](docs/assets/windowsill-hero.svg)
 
+![Recorded demo: four pixel cats, orange tabby, black, white and grey, wandering, sitting, stretching and curling up for naps on the floor above a pretend Dock while the cursor drifts past them](docs/assets/demo.gif)
+
+Run the demo locally: `npm run dev` then open `/demo.html`.
+
 ---
 
 ## A cat on your screen

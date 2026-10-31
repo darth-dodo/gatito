@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Art pipeline: `npm run art` turns GenAI pixel art (12 cut-out parts and 8 key poses on a magenta background) into PixiJS sprite sheets, recolours orange tabby into black, white and grey, and ships readable placeholder cats until real art lands; CI checks the committed sheets are current by comparing pixels ([#13](https://github.com/darth-dodo/windowsill/pull/13)).
 - Pets on screen: PixiJS cut-out puppets that walk, sit, groom, stretch, loaf, nap with a floating "z" and blink, with ears and tail showing mood, smooth cross-fades between poses, and a sleeping cat that stretches before stepping out from under a still cursor ([#14](https://github.com/darth-dodo/windowsill/pull/14)).
 - Claude Code project skills for syncing stacked PRs, cutting a release and adding pet art, plus a repo `CLAUDE.md`; `npm run check` now runs every CI gate locally.
+- Browser demo page (`demo.html`) that runs the real pets on a pretend Mac desktop, with `?speed=` and `?seed=` options, and `npm run demo:record`, which films it into `docs/assets/demo.mp4` and `docs/assets/demo.gif` for the README.
 
 ### Changed
 
