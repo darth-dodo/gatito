@@ -30,4 +30,6 @@ export const TUNING = {
   maxNameLength: 20,
   gravityPxPerS2: 2400,
   simStepSeconds: 1 / 60,
+  /** Whole-number screen scale for the 48 px pixel art. */
+  renderScale: 2,
 } as const;
