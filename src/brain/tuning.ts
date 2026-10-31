@@ -28,4 +28,6 @@ export const TUNING = {
   walkAwayChance: 0.5,
   maxCats: 6,
   maxNameLength: 20,
+  gravityPxPerS2: 2400,
+  simStepSeconds: 1 / 60,
 } as const;
