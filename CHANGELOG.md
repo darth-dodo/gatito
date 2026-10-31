@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Petting detection and the active-time clock: strokes count per sweep so mouse jitter never purrs a pet, and mood only changes while you are at the computer and Nap time is off ([#7](https://github.com/darth-dodo/windowsill/pull/7)).
 - Versioned save file with validation, atomic writes and quarantine of a bad file as `windowsill.json.bad` ([#8](https://github.com/darth-dodo/windowsill/pull/8)).
 - World physics: gravity, dragging and dropping, walkers turning at screen edges, re-flooring when the Dock moves, and clamping pets dropped off screen ([#9](https://github.com/darth-dodo/windowsill/pull/9)).
+- Click-through: clicks pass to your apps everywhere except on a pet, measured from the overlay's real position so pets sit correctly even when macOS nudges the window below the menu bar, and correct on Retina ([#11](https://github.com/darth-dodo/windowsill/pull/11)).
 - Claude Code project skills for syncing stacked PRs, cutting a release and adding pet art, plus a repo `CLAUDE.md`; `npm run check` now runs every CI gate locally.
 
 [Unreleased]: https://github.com/darth-dodo/windowsill/commits/main
