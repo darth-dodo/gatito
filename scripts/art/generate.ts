@@ -13,8 +13,8 @@ const MAX_RETRIES = 2;
 const SUBJECTS: Record<string, string> = {
   reference: 'one full-body cat standing on four legs, whole body including head, ears, tail and all four legs, relaxed neutral pose',
   body: 'the torso only, spanning about x 20% to 86% and y 36% to 65% of the canvas as in the reference, with no head, no neck, no legs, no tail and no ears',
-  head: 'only the head, from the neck up, at about x 70% to 97% and y 16% to 45% of the canvas as in the reference, blank face with no ears and no eyes; everything below the chin and behind the head is plain magenta, no body at all',
-  'ear-near': 'only a single tiny triangular ear with a pink inner, about 8% of the canvas wide, at x 76% to 84% and y 16% to 27% of the canvas as in the reference; everything else on the canvas is plain magenta, including the whole body and head',
+  head: 'the head only (from the neck up), with the ears and the eyes painted over with plain fur so the face is blank',
+  'ear-near': 'the near ear only, the left one of the two ears on top of the head',
   'ear-far': 'the far ear only, a small darker ear at about x 85% to 92% and y 16% to 24% of the canvas as in the reference; no head, no body, no other ear',
   'eyes-open': 'the open eye only, one small dark eye at about x 86% to 92% and y 29% to 33% of the canvas as in the reference; no face, no head, nothing else',
   'eyes-closed': 'a closed eye only, drawn as a short thin dark curved line where the open eye sits',
@@ -22,7 +22,7 @@ const SUBJECTS: Record<string, string> = {
   'leg-front-near': 'the near front leg only, from shoulder to paw',
   'leg-front-far': 'the far front leg only, from shoulder to paw',
   'leg-back-near': 'the near back leg only, at about x 23% to 33% and y 60% to 87% of the canvas as in the reference, from hip to paw; no body, no tail, no other leg',
-  'leg-back-far': 'only the far back leg, a slim darker leg at about x 35% to 48% and y 63% to 86% of the canvas as in the reference, from hip to paw; no body, no tail, no other leg, everything else plain magenta',
+  'leg-back-far': 'the far back leg only, the darker rear leg that is the second from the left, from hip to paw',
   'paw-raised': 'only a front leg raised up with an open paw, rising from the shoulder at about x 63% to 70% of the canvas, reaching up to about y 12%; no body, no head, no tail, no other leg',
   sit: 'whole cat sitting upright, side view, drawn WITHOUT ears and WITHOUT eyes (blank face), without the tail',
   loaf: 'whole cat in a loaf pose, paws tucked under the body, without the tail',
@@ -107,14 +107,14 @@ async function main(): Promise<void> {
   mkdirSync(dir, { recursive: true });
   const coatWords = coat.replace(/-/g, ' ');
   const prompt = (subject: string, isPart: boolean) =>
-    `pixel art, 48x48 grid, side view facing right, ${coatWords} ${species}, ${subject}, flat magenta #FF00FF background, no shadow, no text. Use the attached image as the reference for style, colours and proportions. ${isPart
-      ? 'Same canvas, same size and position as the reference cat: draw ONLY this part exactly where it sits on the reference cat, at the same scale, and make everything else flat magenta #FF00FF.'
-      : 'Same canvas and same scale as the reference cat, with the feet on the same baseline as the reference.'} Output one square image.`;
+    isPart
+      ? `Edit the attached ${coatWords} ${species} pixel art image (96x96 grid, side view facing right). Keep ONLY ${subject}, exactly as it is in the image: same position, same size, same pixels, same canvas. Paint everything else flat magenta #FF00FF. No shadow, no text, no outline of removed parts. Output one square image.`
+      : `pixel art, 96x96 grid, side view facing right, ${coatWords} ${species}, ${subject}, flat magenta #FF00FF background, no shadow, no text. Use the attached image as the reference for style, colours and proportions. Same canvas and same scale as the reference cat, with the feet on the same baseline as the reference. Output one square image.`;
 
   let reference = arg('reference') ?? join(dir, 'reference.png');
   if (!arg('reference') && (!existsSync(reference) || only?.includes('reference'))) {
     console.log('generating reference');
-    const refPrompt = `pixel art, 48x48 grid, side view facing right, ${coatWords} ${species}, ${SUBJECTS.reference}, flat magenta #FF00FF background, no shadow, no text. Output one square image.`;
+    const refPrompt = `pixel art, 96x96 grid, side view facing right, ${coatWords} ${species}, ${SUBJECTS.reference}, flat magenta #FF00FF background, no shadow, no text. Output one square image.`;
     writeFileSync(reference, await generate(refPrompt, key));
     makeSquare(reference);
   }

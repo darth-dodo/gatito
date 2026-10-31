@@ -128,22 +128,22 @@ const LAND_SQUASH_PX = 2;
 
 /** Where the tail base sits on each key pose, and its resting rotation (the tail art points up). */
 const POSE_TAIL: Record<PoseName, { x: number; y: number; rotation: number; swing: number }> = {
-  sit: { x: -18, y: 22, rotation: -0.9, swing: 1 },
-  loaf: { x: -28, y: 16, rotation: -0.9, swing: 0.6 },
-  'sleep-curl': { x: 36, y: 20, rotation: -1.6, swing: 0.3 },
-  'belly-up': { x: -26, y: 14, rotation: -0.6, swing: 1 },
-  stretch: { x: -28, y: -8, rotation: 0.2, swing: 0.6 },
-  groom: { x: -18, y: 22, rotation: -0.9, swing: 0.6 },
-  'sit-up': { x: -20, y: 24, rotation: -1, swing: 1 },
-  dangle: { x: 4, y: 24, rotation: Math.PI, swing: 1.4 },
+  sit: { x: -22, y: 22, rotation: 1.1, swing: 1 },
+  loaf: { x: -30, y: 8, rotation: 1.2, swing: 0.6 },
+  'sleep-curl': { x: 26, y: 16, rotation: 1, swing: 0.3 },
+  'belly-up': { x: -36, y: 4, rotation: 1.1, swing: 1 },
+  stretch: { x: -30, y: -21, rotation: 2.3, swing: 0.6 },
+  groom: { x: -29, y: 22, rotation: 1.1, swing: 0.6 },
+  'sit-up': { x: -17, y: 26, rotation: 1.1, swing: 1 },
+  dangle: { x: -24, y: -6, rotation: -0.4, swing: 1.4 },
 };
 
 /** The sit pose is drawn without ears and eyes; these parts are always layered on it. Other poses keep their own. */
 const SIT_OVERLAY: Partial<Record<PartName, [number, number]>> = {
-  'ear-near': [10, -34],
-  'ear-far': [20, -34],
-  'eyes-open': [20, -30],
-  'eyes-closed': [20, -30],
+  'ear-near': [24, -40],
+  'ear-far': [31, -44],
+  'eyes-open': [33, -37],
+  'eyes-closed': [33, -37],
 };
 
 const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));
