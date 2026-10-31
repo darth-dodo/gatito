@@ -8,6 +8,8 @@ export const TUNING = {
   underCursorSeconds: 2,
   strokesForPurr: 3,
   strokeWindowSeconds: 2,
+  strokeMinTravelPx: 12,
+  maxFrameDeltaSeconds: 0.25,
   cuddleNapIdleSeconds: 180,
   cuddleNapMinAffection: 70,
   mischiefMultiplier: { mischievous: 3.0, curious: 1.8, social: 1.5, cosy: 0.9 },
