@@ -25,6 +25,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx tsc --noEmit
+      - name: Build placeholder sprite sheets and check the committed atlases are current
+        run: |
+          npm run art -- --placeholders
+          git diff --exit-code src/assets/atlas
       - run: npm test -- --coverage
 
   rust:
