@@ -22,6 +22,7 @@ function pet(personality: Personality, mood: Mood): Pet {
     personality,
     mood,
     pairings: {} as Pet['pairings'],
+    learned: {},
   };
 }
 

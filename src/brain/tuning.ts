@@ -15,6 +15,7 @@ export const TUNING = {
   wokeStretchFactor: 100,
   rewardWindowSeconds: 3,
   learnedShare: 0.8,
+  learnedKeepShare: 0.6,
   fadeActiveHours: 40,
   cheekyChance: 1 / 7,
   rewardStrength: 2.0,

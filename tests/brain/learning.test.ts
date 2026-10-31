@@ -7,6 +7,7 @@ import {
   noReward,
   respondToCue,
   reward,
+  updateLearned,
 } from '../../src/brain/learning';
 import { seededRng } from '../../src/brain/rng';
 import { TUNING } from '../../src/brain/tuning';
@@ -20,6 +21,10 @@ function learnedSpin(): Pairings {
   return p;
 }
 
+function learnedOf(p: Pairings | undefined): Pet['learned'] {
+  return p ? updateLearned({ ...pet(), pairings: p }).learned : {};
+}
+
 function pet(over: Partial<Pet> & { affection?: number; energy?: number } = {}): Pet {
   return {
     id: 'p',
@@ -30,6 +35,7 @@ function pet(over: Partial<Pet> & { affection?: number; energy?: number } = {}):
     personality: over.personality ?? 'cosy',
     mood: { affection: over.affection ?? 80, energy: over.energy ?? 80 },
     pairings: over.pairings ?? newPairings(),
+    learned: over.learned ?? learnedOf(over.pairings),
   };
 }
 
@@ -101,27 +107,52 @@ describe('learnedTrick', () => {
 });
 
 describe('fade', () => {
-  it('drifts lightly trained pairings to even over 40 active hours', () => {
+  it('lightly trained pairings are within 0.1 of even after 160 active hours', () => {
     let p = reward(newPairings(), 'whistle', 'spin');
     p = noReward(p, 'clap', 'sit-up');
-    const faded = fade(p, 40 * 3600);
+    const faded = fade(p, 160 * 3600);
     for (const cue of Object.keys(faded) as (keyof Pairings)[]) {
       for (const t of TRICKS) expect(Math.abs(faded[cue][t] - 1)).toBeLessThan(0.1);
     }
   });
 
-  it('keeps a learned pairing learned after 1 active hour', () => {
-    // A well-practised pairing (12 rewards), not one sitting right on the 80 percent line.
-    let p = newPairings();
-    for (let i = 0; i < 12; i++) p = reward(p, 'whistle', 'spin');
-    const faded = fade(p, 3600);
-    expect(learnedTrick(faded, 'whistle')).toBe('spin');
+  it('keeps an 8-round trick learned after 1 and 20 active hours', () => {
+    const p = learnedSpin();
+    expect(learnedTrick(fade(p, 3600), 'whistle', 'spin')).toBe('spin');
+    expect(learnedTrick(fade(p, 20 * 3600), 'whistle', 'spin')).toBe('spin');
+  });
+
+  it('forgets an 8-round trick after 80 active hours', () => {
+    expect(learnedTrick(fade(learnedSpin(), 80 * 3600), 'whistle', 'spin')).toBeNull();
   });
 
   it('does not mutate its input', () => {
     const p = learnedSpin();
     fade(p, 40 * 3600);
     expect(p.whistle.spin).toBe(1 + 8 * TUNING.rewardStrength);
+  });
+});
+
+describe('learned hysteresis', () => {
+  // spin share = 0.7: s / (s + 4) = 0.7
+  const p: Pairings = newPairings();
+  p.whistle.spin = 28 / 3;
+
+  it('stays learned at share 0.7 when previously learned', () => {
+    expect(learnedTrick(p, 'whistle', 'spin')).toBe('spin');
+  });
+  it('is not learned at share 0.7 when not previously learned', () => {
+    expect(learnedTrick(p, 'whistle', null)).toBeNull();
+    expect(learnedTrick(p, 'whistle')).toBeNull();
+  });
+  it('updateLearned recomputes every cue from the previous value', () => {
+    const base = pet({ pairings: p });
+    expect(updateLearned(base).learned).toEqual({});
+    expect(updateLearned({ ...base, learned: { whistle: 'spin' } }).learned).toEqual({
+      whistle: 'spin',
+    });
+    const full = pet({ pairings: learnedSpin() });
+    expect(updateLearned(full).learned).toEqual({ whistle: 'spin' });
   });
 });
 

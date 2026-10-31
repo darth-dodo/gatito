@@ -29,4 +29,6 @@ export interface Pet {
   personality: Personality;
   mood: Mood;
   pairings: Pairings;
+  /** The trick currently learned for each cue; persisted so fading has hysteresis. */
+  learned: Partial<Record<Cue, Trick>>;
 }

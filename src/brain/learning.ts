@@ -50,7 +50,7 @@ export function noReward(p: Pairings, cue: Cue, trick: Trick): Pairings {
 /** Drifts every strength toward 1.0; callers pass only active seconds. */
 export function fade(p: Pairings, activeSeconds: number): Pairings {
   const hours = activeSeconds / 3600;
-  const keep = Math.exp(-hours / (TUNING.fadeActiveHours / 3));
+  const keep = Math.exp(-hours / TUNING.fadeActiveHours);
   const out = {} as Pairings;
   for (const cue of CUES) {
     const row = {} as Record<Trick, number>;
@@ -60,14 +60,34 @@ export function fade(p: Pairings, activeSeconds: number): Pairings {
   return out;
 }
 
-/** The trick holding at least the learned share of the cue's weight, if any. */
-export function learnedTrick(p: Pairings, cue: Cue): Trick | null {
+/**
+ * The trick holding at least the learned share of the cue's weight. A trick
+ * already learned stays learned until its share drops below the keep share.
+ */
+export function learnedTrick(
+  p: Pairings,
+  cue: Cue,
+  wasLearned: Trick | null = null,
+): Trick | null {
   const row = p[cue];
   const total = TRICKS.reduce((sum, t) => sum + row[t], 0);
+  if (wasLearned !== null && row[wasLearned] / total >= TUNING.learnedKeepShare) {
+    return wasLearned;
+  }
   for (const t of TRICKS) {
     if (row[t] / total >= TUNING.learnedShare) return t;
   }
   return null;
+}
+
+/** Recomputes the pet's learned tricks for every cue, with hysteresis. */
+export function updateLearned(pet: Pet): Pet {
+  const learned: Partial<Record<Cue, Trick>> = {};
+  for (const cue of CUES) {
+    const t = learnedTrick(pet.pairings, cue, pet.learned[cue] ?? null);
+    if (t !== null) learned[cue] = t;
+  }
+  return { ...pet, learned };
 }
 
 export function respondToCue(pet: Pet, cue: Cue, rng: Rng): CueResponse {
@@ -75,7 +95,7 @@ export function respondToCue(pet: Pet, cue: Cue, rng: Rng): CueResponse {
   if (pet.mood.affection < TUNING.walkAwayBelowAffection && rng.next() < TUNING.walkAwayChance) {
     return { kind: 'walk-away' };
   }
-  const learned = learnedTrick(pet.pairings, cue);
+  const learned = pet.learned[cue] ?? null;
   if (pet.personality === 'mischievous' && learned !== null && rng.next() < TUNING.cheekyChance) {
     const others = TRICKS.filter((t) => t !== learned);
     return { kind: 'perform', trick: others[Math.floor(rng.next() * others.length)]!, cheeky: true };
