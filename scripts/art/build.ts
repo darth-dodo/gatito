@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import sharp from 'sharp';
 import { COLOURS, SPECIES, type Colour, type Species } from '../../src/brain/types';
 import { ART_CELL, PART_NAMES, POSE_NAMES } from '../../src/render/artNames';
+import { defringe } from './defringe';
 import { PLACEHOLDER_COATS, writePlaceholders } from './placeholder';
 import { isKey, recolour } from './recolour';
 
@@ -31,8 +32,12 @@ async function prepare(file: string, name: string): Promise<Buffer> {
   for (let i = 0; i < data.length; i += 4) {
     if (isKey(data[i], data[i + 1], data[i + 2])) data[i + 3] = 0;
   }
-  const small = await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } })
+  const snapped = await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } })
     .resize(CELL, CELL, { kernel: 'nearest', fit: 'fill' })
+    .raw()
+    .toBuffer();
+  defringe(snapped, CELL, CELL);
+  const small = await sharp(snapped, { raw: { width: CELL, height: CELL, channels: 4 } })
     .png({ palette: true, colours: MAX_COLOURS, dither: 0 })
     .toBuffer();
   return sharp(small).ensureAlpha().raw().toBuffer();
