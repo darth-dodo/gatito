@@ -194,3 +194,31 @@ describe('PetController', () => {
     expect(make(w!).c.activity()).toBe('active');
   });
 });
+
+describe('PetController action end', () => {
+  it('reports a trick as done once it has finished', () => {
+    const r = make(1);
+    expect(r.c.start({ kind: 'trick', trick: 'spin' })).toBe(true);
+    expect(r.c.actionDone()).toBe(false);
+    for (let t = 0; t < ANIM_SECONDS.spin + 1 && !r.c.actionDone(); t += FRAME) tick(r, FRAME);
+    expect(r.c.actionDone()).toBe(true);
+  });
+
+  it('plays yawn and walk-away and reports when they end', () => {
+    for (const kind of ['yawn', 'walk-away'] as const) {
+      const r = make(1);
+      expect(r.c.start({ kind })).toBe(true);
+      expect(r.c.anim().name).toBe(kind === 'yawn' ? 'yawn' : 'wander');
+      expect(r.c.actionDone()).toBe(false);
+      for (let t = 0; t < 10 && !r.c.actionDone(); t += FRAME) tick(r, FRAME);
+      expect(r.c.actionDone()).toBe(true);
+    }
+  });
+
+  it('refuses to start while held and counts as done', () => {
+    const r = make(1);
+    r.w.pickUp('mochi', 300, 200);
+    expect(r.c.start({ kind: 'trick', trick: 'spin' })).toBe(false);
+    expect(r.c.actionDone()).toBe(true);
+  });
+});
