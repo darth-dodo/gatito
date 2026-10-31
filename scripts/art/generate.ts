@@ -4,11 +4,17 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { COLOURS, SPECIES } from '../../src/brain/types';
+import { isRetryableStatus, parseBody } from './retry';
 
 const ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 const MODEL = 'google/gemini-3.1-flash-image';
 const MAX_CALLS = 45;
 const MAX_RETRIES = 2;
+const REQUEST_TIMEOUT_MS = 90_000;
+
+/** A failure worth retrying (timeout, 408, 429, 5xx). Anything else fails fast. */
+class Retryable extends Error {}
 
 const SUBJECTS: Record<string, string> = {
   reference: 'one full-body cat standing on four legs, whole body including head, ears, tail and all four legs, relaxed neutral pose',
@@ -55,13 +61,24 @@ async function generate(prompt: string, key: string, referencePath?: string): Pr
     if (calls >= MAX_CALLS) throw new Error(`Call cap of ${MAX_CALLS} per run reached; aborting.`);
     calls++;
     try {
-      const res = await fetch(ENDPOINT, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: MODEL, modalities: ['image', 'text'], messages: [{ role: 'user', content }] }),
-      });
-      const json = (await res.json()) as any;
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${JSON.stringify(json).slice(0, 500)}`);
+      let res: Response;
+      try {
+        res = await fetch(ENDPOINT, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: MODEL, modalities: ['image', 'text'], messages: [{ role: 'user', content }] }),
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        });
+      } catch (err) {
+        throw new Retryable(`request failed: ${(err as Error).name === 'TimeoutError' ? 'timed out' : (err as Error).message}`);
+      }
+      const text = await res.text();
+      const json = parseBody(text) as any;
+      if (!res.ok) {
+        const message = `HTTP ${res.status}: ${(json === undefined ? text : JSON.stringify(json)).slice(0, 500)}`;
+        throw isRetryableStatus(res.status) ? new Retryable(message) : new Error(message);
+      }
+      if (json === undefined) throw new Retryable(`HTTP ${res.status} with a non-JSON body: ${text.slice(0, 300)}`);
       if (typeof json?.usage?.cost === 'number') {
         totalCost += json.usage.cost;
         sawCost = true;
@@ -72,7 +89,7 @@ async function generate(prompt: string, key: string, referencePath?: string): Pr
       }
       return Buffer.from(url.slice(url.indexOf(',') + 1), 'base64');
     } catch (err) {
-      if (attempt === MAX_RETRIES) throw err;
+      if (!(err instanceof Retryable) || attempt === MAX_RETRIES) throw err;
       console.error(`  attempt ${attempt + 1} failed: ${(err as Error).message}`);
       await new Promise((r) => setTimeout(r, 2000 * 2 ** attempt));
     }
@@ -100,6 +117,10 @@ async function main(): Promise<void> {
   const coat = arg('coat');
   if (!species || !coat) {
     console.error('Usage: npm run art:generate -- --species cat --coat orange-tabby [--only a,b] [--reference path]');
+    process.exit(1);
+  }
+  if (!(SPECIES as readonly string[]).includes(species) || !(COLOURS as readonly string[]).includes(coat)) {
+    console.error(`Unknown --species or --coat. Species: ${SPECIES.join(', ')}. Coats: ${COLOURS.join(', ')}.`);
     process.exit(1);
   }
   const only = arg('only')?.split(',').map((s) => s.trim()).filter(Boolean);

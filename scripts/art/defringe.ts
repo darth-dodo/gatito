@@ -1,6 +1,9 @@
-/** True for a colour that is magenta, or a blend of magenta with the art (r and b both well above g). */
+/**
+ * True for a colour that is magenta or a strong blend of magenta with the art: r and b both well above g,
+ * and g well below the lower of r and b. A saturated rose such as (220, 90, 150) is real art and passes.
+ */
 export function isMagentaTinted(r: number, g: number, b: number): boolean {
-  return r - g > 40 && b - g > 40;
+  return r - g > 40 && b - g > 40 && g < 0.45 * Math.min(r, b);
 }
 
 const SEARCH_RADIUS = 3;
@@ -57,9 +60,17 @@ export function defringe(data: Buffer, width: number, height: number): void {
   const opaque = (x: number, y: number) => inside(x, y) && data[at(x, y) + 3] > 0;
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      if (opaque(x, y) && !opaque(x - 1, y) && !opaque(x + 1, y) && !opaque(x, y - 1) && !opaque(x, y + 1)) {
-        specks.push(at(x, y));
+      if (!opaque(x, y)) continue;
+      let lonely = true;
+      for (let dy = -1; dy <= 1 && lonely; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if ((dx !== 0 || dy !== 0) && opaque(x + dx, y + dy)) {
+            lonely = false;
+            break;
+          }
+        }
       }
+      if (lonely) specks.push(at(x, y));
     }
   }
   for (const i of specks) data[i + 3] = 0;

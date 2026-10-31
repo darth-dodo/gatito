@@ -22,7 +22,8 @@ describe('isMagentaTinted', () => {
   it('flags magenta blends and spares fur, outline and the pink nose', () => {
     expect(isMagentaTinted(240, 68, 156)).toBe(true); // magenta over orange
     expect(isMagentaTinted(127, 0, 127)).toBe(true); // magenta over black
-    expect(isMagentaTinted(248, 124, 194)).toBe(true); // light blend
+    expect(isMagentaTinted(255, 60, 200)).toBe(true); // mostly magenta
+    expect(isMagentaTinted(220, 90, 150)).toBe(false); // saturated rose
     expect(isMagentaTinted(224, 136, 58)).toBe(false);
     expect(isMagentaTinted(42, 26, 20)).toBe(false);
     expect(isMagentaTinted(232, 144, 154)).toBe(false);
@@ -58,5 +59,24 @@ describe('defringe', () => {
     expect(c.px(6, 1)[3]).toBe(0);
     expect(c.px(1, 1)[3]).toBe(255);
     expect(c.px(1, 2)[3]).toBe(255);
+  });
+});
+
+describe('defringe, tighter rules', () => {
+  it('keeps a pink nose and a saturated rose beside orange fur unchanged', () => {
+    const c = canvas(6, 3);
+    for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) c.set(x, y, [224, 136, 58]);
+    c.set(3, 1, [232, 144, 154]);
+    c.set(4, 1, [220, 90, 150]);
+    defringe(c.data, 6, 3);
+    expect(c.px(3, 1)).toEqual([232, 144, 154, 255]);
+    expect(c.px(4, 1)).toEqual([220, 90, 150, 255]);
+  });
+
+  it('keeps a one pixel diagonal stroke', () => {
+    const c = canvas(6, 6);
+    for (let i = 0; i < 5; i++) c.set(i, i, [42, 26, 20]);
+    defringe(c.data, 6, 6);
+    for (let i = 0; i < 5; i++) expect(c.px(i, i)[3]).toBe(255);
   });
 });

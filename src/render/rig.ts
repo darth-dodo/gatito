@@ -126,7 +126,7 @@ const DANGLE_SWAY_HZ = 0.8;
 const FALL_LEG_SPREAD = 0.5;
 const LAND_SQUASH_PX = 2;
 
-/** Where the tail base sits on each key pose, and its resting rotation (the tail art points up). */
+/** Where the tail base sits on each key pose, and its rotation (the tail art hangs down and to the left from its base, so rotation 0 is the standing cat). */
 const POSE_TAIL: Record<PoseName, { x: number; y: number; rotation: number; swing: number }> = {
   sit: { x: -22, y: 22, rotation: 1.1, swing: 1 },
   loaf: { x: -30, y: 8, rotation: 1.2, swing: 0.6 },
