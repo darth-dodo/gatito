@@ -2,21 +2,21 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Pixel cats that live on the macOS and Windows desktop: create them, pet them, pick them up, and teach them tricks from the cue ring, with mood and memory.
+**Goal:** Pixel cats that live on the macOS desktop: create them, pet them, pick them up, and teach them tricks from the cue ring, with mood and memory.
 
-**Architecture:** A Tauri 2 app with one transparent, always-on-top, non-focusable overlay window per primary display. A pure TypeScript "brain" (mood, behaviour choice, learning, stroke detection, save format) is unit-tested with no DOM; a simulation layer moves cats on a fixed step; a canvas renderer draws code-generated pixel sprites. Rust owns OS work: click-through by polling the cursor against cat hit boxes, the usable screen area, user idle time, the save file and the tray.
+**Architecture:** A Tauri 2 app with one transparent, always-on-top, non-focusable overlay window per primary display. A pure TypeScript "brain" (mood, behaviour choice, learning, stroke detection, save format) is unit-tested with no DOM; a simulation layer moves cats on a fixed step; PixiJS draws each pet as a cut-out puppet (parts plus key poses) from a sprite sheet built by an art pipeline. Rust owns OS work: click-through by polling the cursor against pet hit boxes, the usable screen area, user idle time, the save file and the menu bar menu.
 
-**Tech Stack:** Tauri 2 (Rust stable), `@tauri-apps/api` 2.12.4, `@tauri-apps/cli` 2.12.4, `@tauri-apps/plugin-autostart` 2.7.0, Vite 8.3.5, TypeScript 7.0.2, Vitest 5.0.5, Rust crate `user-idle` (latest at scaffold time, pinned in `Cargo.lock`).
+**Tech Stack:** Tauri 2 (Rust stable), `@tauri-apps/api` 2.12.4, `@tauri-apps/cli` 2.12.4, `@tauri-apps/plugin-autostart` 2.7.0, Vite 8.3.5, TypeScript 7.0.2, Vitest 5.0.5, `pixi.js` 8.22.0, `sharp` 0.35.5 (dev, art pipeline only), Rust crate `user-idle` (latest at scaffold time, pinned in `Cargo.lock`).
 
 **Spec:** `docs/product.md`. Executors read the spec and this plan together; behaviour names in **bold** come from the spec.
 
-**Linear:** https://linear.app/ai-adventures/project/gatito-4763d10a1709
+**Linear:** https://linear.app/ai-adventures/project/windowsill-4763d10a1709
 
 ## Global Constraints
 
-- Platforms: macOS and Windows; primary display only in Phase 1.
+- Platform: macOS only; primary display only in Phase 1.
 - No accounts, no telemetry, no analytics; the app makes no network calls in Phase 1.
-- Clicks pass through everywhere except on a cat; the overlay never takes focus and never appears in the Dock, taskbar or Alt-Tab.
+- Clicks pass through everywhere except on a cat; the overlay never takes focus and never appears in the Dock or Cmd-Tab, and shows on every Space.
 - Cats never move, resize or focus real windows.
 - At most 6 pets. Name: required, up to 20 characters (count graphemes, trim whitespace).
 - Species: `cat` only in Phase 1; the type includes `dog` (Phase 2) so dogs need no engine change. Styles: `pixel` only in Phase 1 (the type lists all four). Colours: orange tabby, black, white, grey, tuxedo, calico, Siamese. Personalities: Cosy, Curious, Mischievous, Social; personality is fixed at birth.
@@ -24,6 +24,7 @@
 - Mood and trick fading move only on active time: app running, user input within the last 300 s, Nap time off.
 - Save state: one versioned JSON file in the OS app-data folder; meter values, not timestamps.
 - No sounds in Phase 1.
+- Art: pixel art on a 48 by 48 grid, side view facing right, cut-out parts and key poses exactly as named in the spec's Art section; real art and placeholders share those names.
 - Never use em or en dashes in code, comments, docs or commit messages. Conventional commits.
 - Every numeric value marked *(tunable)* in the spec lives in `src/brain/tuning.ts`, nowhere else.
 
@@ -32,15 +33,15 @@
 1. **The usable screen area changes while running** (Dock resized or moved, resolution changed): every cat re-floors onto the new bottom edge and none is left off screen. Test in Task 7.
 2. **A corrupt, empty or newer-version save file**: the app starts with no cats (first run), keeps the bad file as `windowsill.json.bad`, and never crashes. Test in Task 6.
 3. **A cat dropped or dragged off screen** (above the top, past an edge): it is clamped back inside the screen and lands on the floor. Test in Task 7.
-4. **Resume after sleep produces a huge frame delta**: the fixed-step loop clamps the delta so cats do not teleport and mood does not jump. Test in Task 9.
-5. **Awkward names** (only spaces, emoji, 21 graphemes, duplicates): spaces-only is rejected, emoji counts as one character each, the 21st grapheme is rejected, duplicate names are allowed. Test in Task 11.
+4. **Resume after sleep produces a huge frame delta**: the fixed-step loop clamps the delta so cats do not teleport and mood does not jump. Test in Task 10.
+5. **Awkward names** (only spaces, emoji, 21 graphemes, duplicates): spaces-only is rejected, emoji counts as one character each, the 21st grapheme is rejected, duplicate names are allowed. Test in Task 12.
 
 ---
 
 ## File Structure
 
 ```
-pet/
+windowsill/
   package.json  tsconfig.json  vite.config.ts  index.html  create.html
   src/
     brain/                  pure logic, no DOM, unit tested
@@ -58,9 +59,17 @@ pet/
       world.ts              cats in space: floor, gravity, drag, clamping
       controller.ts         per-cat action state machine driven by the brain
     render/
-      pixelArt.ts           code-generated pixel frames per animation
-      palette.ts            coat palettes and palette swap
-      renderer.ts           draws cats and effects (hearts, z, sparkle, cue ring)
+      rig.ts                pure: animation + time + mood -> pose and part transforms
+      stage.ts              PixiJS stage: one puppet container per pet
+      effects.ts            hearts, z, sparkle particles and the cue ring
+    assets/atlas/           built sprite sheets (<species>-<coat>.png + .json)
+  art/
+    source/<species>/<coat>/<name>.png   owner's GenAI images
+    rig/<species>.json      part pivots and layer order
+  scripts/art/
+    build.ts                magenta key, grid snap, 16 colours, trim, pack
+    recolour.ts             orange tabby -> black, white, grey palette maps
+    placeholder.ts          code-drawn placeholder parts and poses
     overlay/
       main.ts               overlay entry: loop, IPC wiring
       input.ts              hover, stroke, drag, right-click routing
@@ -74,7 +83,7 @@ pet/
     src/screen.rs           usable screen area
     src/idle.rs             user idle seconds
     src/store.rs            load and atomic save of windowsill.json
-    src/tray.rs             tray menu
+    src/tray.rs             menu bar menu
   tests/                    Vitest, mirrors src/ (tests/brain/mood.test.ts ...)
 ```
 
@@ -89,12 +98,12 @@ pet/
 **Interfaces:**
 - Produces: Rust command `get_floor() -> Floor { x: f64, y: f64, width: f64, bottom: f64 }` in logical pixels relative to the overlay window (bottom is the usable area's bottom edge). Event `floor-changed` with the same payload. Front end `ipc.getFloor(): Promise<Floor>` and `ipc.onFloorChanged(cb)`.
 
-- [ ] **Step 1: Install prerequisites.** Rust stable via `rustup` (`curl https://sh.rustup.rs -sSf | sh`, then restart the shell); on macOS, Xcode Command Line Tools; on Windows, Visual Studio Build Tools and WebView2 (preinstalled on Windows 11). Verify: `cargo --version` prints a version.
+- [ ] **Step 1: Install prerequisites.** Rust stable via `rustup` (`curl https://sh.rustup.rs -sSf | sh`, then restart the shell); and Xcode Command Line Tools (`xcode-select --install`). Verify: `cargo --version` prints a version.
 - [ ] **Step 2: Scaffold** a Tauri 2 + Vite + vanilla TypeScript app (`npm create tauri-app@latest`, template `vanilla-ts`, identifier `com.darthdodo.windowsill`), then pin the npm versions listed in Tech Stack and add Vitest with `npm test` running `vitest run`.
 - [ ] **Step 3: Write failing Rust test** `floor_uses_work_area_bottom`: given a monitor rect `(0,0,1440,900)` and work area `(0,25,1440,800)` (logical), `floor_from(monitor, work_area)` returns `Floor { x: 0, y: 25, width: 1440, bottom: 825 }`.
 - [ ] **Step 4: Run** `cd src-tauri && cargo test floor_uses_work_area_bottom`. Expected: FAIL, `floor_from` not found.
 - [ ] **Step 5: Implement** `screen.rs::floor_from(monitor: Rect, work: Rect) -> Floor` and `get_floor` using the primary monitor's `work_area()`; emit `floor-changed` when the monitor's work area differs on a 2 s poll.
-- [ ] **Step 6: Overlay window** in `overlay.rs`: label `overlay`, sized to the primary monitor, `transparent(true)`, `decorations(false)`, `always_on_top(true)`, `skip_taskbar(true)`, `focusable(false)`, `shadow(false)`, visible on all workspaces; macOS `ActivationPolicy::Accessory`. Enable `macOSPrivateApi` for transparency. Body and canvas backgrounds are transparent.
+- [ ] **Step 6: Overlay window** in `overlay.rs`: label `overlay`, sized to the primary monitor, `transparent(true)`, `decorations(false)`, `always_on_top(true)`, `focusable(false)`, `shadow(false)`, `visible_on_all_workspaces(true)`; `ActivationPolicy::Accessory` so there is no Dock icon. Enable `macOSPrivateApi` for transparency. Body and canvas backgrounds are transparent.
 - [ ] **Step 7: Smoke test** `tests/smoke.test.ts`: `npm test` passes with one trivial assertion that imports `src/ipc.ts` types.
 - [ ] **Step 8: Run** `npm test` and `cargo test`. Expected: PASS. Then `npm run tauri dev`: a 64 px orange square sits on the bottom edge of the usable area, above the Dock; the desktop behind is visible. (Clicks are blocked everywhere until Task 8; that is expected now.)
 - [ ] **Step 9: Commit** `feat: scaffold Tauri overlay window on the usable screen area`.
@@ -252,28 +261,53 @@ pet/
 - [ ] **Step 5: Manual check** with `npm run tauri dev` and the Task 1 square registered as a hit box: clicking anywhere else reaches the app underneath (Finder, a browser); hovering the square makes it receive clicks; the overlay never shows in Cmd-Tab or the Dock.
 - [ ] **Step 6: Commit** `feat: click-through except on cat hit boxes`.
 
-### Task 9: Pixel art, renderer and the living loop
+### Task 9: Art pipeline and placeholder sprite sheets
 
 **Files:**
-- Create: `src/render/pixelArt.ts`, `palette.ts`, `renderer.ts`, `src/sim/controller.ts`, `src/overlay/main.ts`
-- Test: `tests/render/palette.test.ts`, `tests/render/pixelArt.test.ts`, `tests/sim/controller.test.ts`
+- Create: `scripts/art/build.ts`, `scripts/art/recolour.ts`, `scripts/art/placeholder.ts`, `art/rig/cat.json`, `src/render/artNames.ts`
+- Modify: `package.json` (`"art": "tsx scripts/art/build.ts"`; add `sharp` 0.35.5 and `tsx` as dev dependencies)
+- Test: `tests/art/build.test.ts`, `tests/art/recolour.test.ts`, fixtures in `tests/art/fixtures/`
 
 **Interfaces:**
-- Consumes: Tasks 2 to 8.
-- Produces: `frames(species: Species, anim: AnimName): PixelFrame[]` (only `cat` frames exist in Phase 1) where `AnimName` covers every `BehaviourName`, the five tricks, `walk`, `dangle`, `fall`, `land`, `purr`, `belly-up`, `yawn`; `PixelFrame = string[]` rows using palette keys (`o` outline, `f` fur, `s` second coat colour, `w` light, `p` pink, `e` eye); `paletteFor(colour: Colour): Record<string, string>`; `class CatController { constructor(pet: Pet, body: Body, rng: Rng); update(dt: number, ctx: ControllerContext): void; anim(): { name: AnimName; frame: number }; start(action: { kind: 'trick'; trick: Trick } | { kind: 'purr' } | ...): void }`; `drawCat(ctx2d, cat, body, anim, scale)`.
+- Produces: `PART_NAMES` (`body`, `head`, `ear-near`, `ear-far`, `eyes-open`, `eyes-closed`, `tail`, `leg-front-near`, `leg-front-far`, `leg-back-near`, `leg-back-far`, `paw-raised`) and `POSE_NAMES` (`sit`, `loaf`, `sleep-curl`, `belly-up`, `stretch`, `groom`, `sit-up`, `dangle`) in `src/render/artNames.ts`; `buildAtlas(species: Species, coat: Colour, srcDir: string, outDir: string): Promise<{ missing: string[] }>`; `recolour(png: Buffer, from: Colour, to: Colour): Promise<Buffer>`; `writePlaceholders(species: Species, coat: Colour, dir: string): Promise<void>`; output `src/assets/atlas/<species>-<coat>.json` in PixiJS sprite sheet format, frame names equal to part and pose names, pivots from `art/rig/cat.json`.
 
 - [ ] **Step 1: Write failing tests:**
-  - `every animation has frames of equal size`: all frames of all `AnimName`s are 24 by 24.
-  - `palettes cover every key for every coat`: `paletteFor(c)` defines `o f s w p e` for all 7 colours; tuxedo's `s` is white, calico's `s` is orange.
-  - `controller plays a behaviour then picks the next`: with a seeded rng, a cat finishes `groom` and starts a new behaviour; there is always a transition animation between `nap` and `wander` (`stretch` after waking).
-  - `huge resume delta is safe` (Review Focus 4): `update(7200)` on the loop path (through `clampFrameDelta`) moves a walking cat at most one clamped step.
-  - `never in the way`: with the cursor still over a cat for more than 2 s, the controller starts a short `wander` aside.
-- [ ] **Step 2: Run** `npm test -- palette pixelArt controller`. Expected: FAIL.
-- [ ] **Step 3: Implement.** Art is code-generated 24 by 24 pixel frames (builder's call per spec), drawn at a whole-number scale (3x default) with `imageSmoothingEnabled = false`. `overlay/main.ts` runs `requestAnimationFrame`, clamps the delta, steps world and controllers, ticks mood with `activeSeconds`, pushes hit boxes to Rust when they move, and renders. Mood shows through behaviour choice plus **Content sit** and **Grumpy sit** only.
-- [ ] **Step 4: Run** tests. Expected: PASS. Manual: one hard-coded test cat wanders, grooms, naps with a floating "z" and stretches awake.
-- [ ] **Step 5: Commit** `feat: pixel cats that live on the floor`.
+  - `magenta becomes transparent`: a fixture with a `#FF00FF` background has alpha 0 there after the build, and the cat pixels are untouched.
+  - `any size snaps to the 48 grid`: a 480 by 480 fixture made of 10 by 10 blocks becomes 48 by 48 with each block one pixel (nearest neighbour, no blending).
+  - `at most 16 colours`: a fixture with 40 colours comes out with 16 or fewer.
+  - `missing parts are listed`: a source folder without `tail` and `sit` returns `missing: ['tail', 'sit']` and `npm run art` exits 1 naming them.
+  - `placeholders cover every name`: after `writePlaceholders`, `buildAtlas` reports nothing missing and the atlas JSON has every part and pose frame.
+  - `recolour maps tabby to grey`: each orange palette entry in a fixture maps to its grey counterpart; outline and eye colours are unchanged.
+- [ ] **Step 2: Run** `npm test -- art`. Expected: FAIL.
+- [ ] **Step 3: Implement.** `npm run art` builds every species and coat folder under `art/source`; for black, white and grey with no folder of their own it recolours the orange tabby set; for any missing coat set it writes placeholders only when `--placeholders` is passed (the default script in dev).
+- [ ] **Step 4: Run** `npm test -- art` and `npm run art -- --placeholders`. Expected: PASS, and `src/assets/atlas/cat-orange-tabby.json` exists.
+- [ ] **Step 5: Commit** `feat(art): pipeline from GenAI images to PixiJS sprite sheets, with placeholders`.
 
-### Task 10: Petting, picking up and dropping
+### Task 10: PixiJS puppets and the living loop
+
+**Files:**
+- Create: `src/render/rig.ts`, `src/render/stage.ts`, `src/render/effects.ts`, `src/sim/controller.ts`, `src/overlay/main.ts`
+- Test: `tests/render/rig.test.ts`, `tests/sim/controller.test.ts`
+
+**Interfaces:**
+- Consumes: Tasks 2 to 9.
+- Produces: `type AnimName` covering every `BehaviourName`, the five tricks, `walk`, `dangle`, `fall`, `land`, `purr`, `belly-up`, `yawn`; `rigPose(anim: AnimName, t: number, mood: Mood): RigFrame` where `RigFrame = { pose: PoseName | 'puppet'; parts: Partial<Record<PartName, { x: number; y: number; rotation: number; visible: boolean }>>; flipX: boolean; rotation: number }`; `class PetController { constructor(pet: Pet, body: Body, rng: Rng); update(dt: number, ctx: ControllerContext): void; anim(): { name: AnimName; t: number }; start(action: { kind: 'trick'; trick: Trick } | { kind: 'purr' } | { kind: 'yawn' } | { kind: 'walk-away' }): void }`; `class PetStage { constructor(app: Application); add(pet: Pet, atlas: Spritesheet): void; remove(id: string): void; draw(id: string, body: Body, frame: RigFrame): void }`.
+
+- [ ] **Step 1: Write failing tests:**
+  - `behaviours use the spec's poses`: `rigPose('nap', 0, m).pose` is `sleep-curl`, `loaf` is `loaf`, `idle-sit`, `content-sit` and `grumpy-sit` are `sit`, `walk` is `puppet`.
+  - `walking swings legs in pairs`: during `walk`, `leg-front-near` and `leg-back-far` share a rotation sign, opposite to the other pair, across a cycle.
+  - `mood moves ears and tail`: at affection 10 the ears rotate further back and the tail swings faster than at affection 90.
+  - `blinks`: `eyes-closed` is visible for a short window at least once every 6 s of `idle-sit`.
+  - `spin and roll over are code-made`: `spin` toggles `flipX` within its duration; `roll-over` passes through `belly-up` with a full `rotation` turn.
+  - `controller plays a behaviour then picks the next`: a seeded cat finishes `groom` and starts another behaviour; waking from `nap` always plays `stretch` before `wander`.
+  - `huge resume delta is safe` (Review Focus 4): one `update(7200)` through `clampFrameDelta` moves a walking cat by at most one clamped step.
+  - `never in the way`: with the cursor still over a cat for more than 2 s, it starts a short `wander` aside.
+- [ ] **Step 2: Run** `npm test -- rig controller`. Expected: FAIL.
+- [ ] **Step 3: Implement.** `PetStage` builds one container per pet: pose sprites and puppet parts from the atlas, layered by `art/rig/cat.json`, `texture.source.scaleMode = 'nearest'`, whole-number scale (2x). `overlay/main.ts` creates a transparent PixiJS `Application` (`backgroundAlpha: 0`), runs its ticker, clamps the delta, steps world and controllers, ticks mood with `activeSeconds`, pushes hit boxes to Rust when they move, and draws. `effects.ts` holds the floating "z" here; hearts and sparkle arrive with Tasks 11 and 13.
+- [ ] **Step 4: Run** tests. Expected: PASS. Manual: one hard-coded placeholder cat wanders, grooms, naps with a floating "z", stretches awake, and its tail and blinks keep moving.
+- [ ] **Step 5: Commit** `feat: PixiJS puppet pets that live on the floor`.
+
+### Task 11: Petting, picking up and dropping
 
 **Files:**
 - Create: `src/overlay/input.ts`
@@ -281,16 +315,16 @@ pet/
 - Test: `tests/overlay/input.test.ts`
 
 **Interfaces:**
-- Consumes: `StrokeDetector`, `World.pickUp/dragTo/drop`, `CatController.start`.
-- Produces: `class InputRouter { pointerMove(x, y, t): void; pointerDown(x, y, button: 0 | 2): void; pointerUp(x, y): void }` dispatching to **Purr**, **Belly up**, **Pick up**, **Drop**, and (Task 12) the cue ring.
+- Consumes: `StrokeDetector`, `World.pickUp/dragTo/drop`, `PetController.start`.
+- Produces: `class InputRouter { pointerMove(x, y, t): void; pointerDown(x, y, button: 0 | 2): void; pointerUp(x, y): void }` dispatching to **Purr**, **Belly up**, **Pick up**, **Drop**, and (Task 13) the cue ring.
 
 - [ ] **Step 1: Write failing tests:** moving back and forth over a cat 3 times in 1.5 s starts `purr` and raises affection by `3 * affectionPerStroke`; continued stroking for 3 more strokes starts `belly-up` for a cat with affection at least 70; press and move on a cat calls `pickUp` then `dragTo` and plays `dangle`; release calls `drop`, plays `fall` then `land`, and leaves mood unchanged.
 - [ ] **Step 2: Run** `npm test -- input`. Expected: FAIL.
-- [ ] **Step 3: Implement** and draw rising hearts during purr.
+- [ ] **Step 3: Implement** and add rising hearts to `effects.ts` during purr.
 - [ ] **Step 4: Run** tests. Expected: PASS. Manual: pet, pick up and drop on macOS.
 - [ ] **Step 5: Commit** `feat: petting, purring and pick up and drop`.
 
-### Task 11: Creating, editing and remembering pets
+### Task 12: Creating, editing and remembering pets
 
 **Files:**
 - Create: `src/brain/names.ts`, `create.html`, `src/create/main.ts`
@@ -302,15 +336,15 @@ pet/
 
 - [ ] **Step 1: Write failing tests** (Review Focus 5): `'   '` is `empty`; `'  Mochi '` becomes `'Mochi'`; 20 emoji pass and 21 graphemes fail (`Intl.Segmenter`); two cats may share a name. Form: the seventh cat cannot be created (`maxCats` 6, the button is disabled with "6 cats is the limit"); personality is read-only when editing.
 - [ ] **Step 2: Run** `npm test -- names form`. Expected: FAIL.
-- [ ] **Step 3: Implement** **New pet** (species with only Cat enabled and Dog shown as "coming in Phase 2", name, style with only Pixel enabled and the others shown as "coming soon", colour, personality, live preview using the renderer), **Edit pet**, **Rehome pet** (confirm dialog). A new cat drops in from the top of the screen. With no saved cats, **New pet** opens on launch (**First run**). New cats start at affection 60, energy 80, `newPairings()`.
+- [ ] **Step 3: Implement** **New pet** (species with only Cat enabled and Dog shown as "coming in Phase 2", name, style with only Pixel enabled and the others shown as "coming soon", colour, personality, live preview using `PetStage`; only coats whose sprite sheet exists are offered), **Edit pet**, **Rehome pet** (confirm dialog). A new cat drops in from the top of the screen. With no saved cats, **New pet** opens on launch (**First run**). New cats start at affection 60, energy 80, `newPairings()`.
 - [ ] **Step 4: Run** tests. Expected: PASS. Manual: create two cats, quit, relaunch, both return with their moods.
 - [ ] **Step 5: Commit** `feat: create, edit, rehome and remember pets`.
 
-### Task 12: The cue ring and tricks
+### Task 13: The cue ring and tricks
 
 **Files:**
 - Create: `src/overlay/cueRing.ts`
-- Modify: `src/overlay/input.ts`, `src/sim/controller.ts`, `src/render/renderer.ts`
+- Modify: `src/overlay/input.ts`, `src/sim/controller.ts`, `src/render/effects.ts`
 - Test: `tests/overlay/cueRing.test.ts`, `tests/sim/tricks.test.ts`
 
 **Interfaces:**
@@ -329,7 +363,7 @@ pet/
 - [ ] **Step 4: Run** tests. Expected: PASS. Manual: teach a fresh cat Whistle to Spin and count the rounds (expect about 5 to 8).
 - [ ] **Step 5: Commit** `feat: cue ring and reward-trained tricks`.
 
-### Task 13: Tray menu, Nap time, idle time and launch at login
+### Task 14: Menu bar menu, Nap time, idle time and launch at login
 
 **Files:**
 - Create: `src-tauri/src/tray.rs`, `src-tauri/src/idle.rs`
@@ -341,18 +375,18 @@ pet/
 
 - [ ] **Step 1: Write failing tests:** `idle_never_panics` (returns a number on the CI host); `nap time hides and stops the clock`: with `napTime` on, cats play curl-up then fade out, `activeSeconds` returns 0, and toggling off fades them back with moods unchanged; `call over walks to the centre`.
 - [ ] **Step 2: Run** `cargo test idle` and `npm test -- napTime`. Expected: FAIL.
-- [ ] **Step 3: Implement** the tray: icon is a small cat head; items **New pet…**, one submenu per cat (**Edit…**, **Call over**, **Rehome…**), **Nap time** (check item, persisted in settings), **Launch at login** (check item via `tauri-plugin-autostart`, off by default), **Quit Windowsill** (saves first). The Gemma status entry is Phase 2 and is not added. The overlay polls `user_idle_seconds` every 5 s and feeds `activeSeconds` and **Cuddle nap**.
+- [ ] **Step 3: Implement** the menu bar menu (Tauri tray API): icon is a small monochrome cat head template image; items **New pet…**, one submenu per cat (**Edit…**, **Call over**, **Rehome…**), **Nap time** (check item, persisted in settings), **Launch at login** (check item via `tauri-plugin-autostart`, off by default), **Quit Windowsill** (saves first). The Gemma status entry is Phase 2 and is not added. The overlay polls `user_idle_seconds` every 5 s and feeds `activeSeconds` and **Cuddle nap**.
 - [ ] **Step 4: Run** tests. Expected: PASS.
 - [ ] **Step 5: Commit** `feat: tray menu, nap time, idle-aware clock and launch at login`.
 
-### Task 14: Windows build and release checks
+### Task 15: macOS release checks
 
 **Files:**
-- Create: `README.md`, `docs/release-checklist.md`, `.github/workflows/ci.yml`
-- Modify: `src-tauri/tauri.conf.json` (bundle targets `dmg`, `nsis`)
+- Create: `docs/release-checklist.md`, `.github/workflows/ci.yml`
+- Modify: `README.md` (install and use), `src-tauri/tauri.conf.json` (bundle target `dmg`, `LSUIElement` true)
 
-- [ ] **Step 1: CI** runs `npm ci`, `npm test`, `npx tsc --noEmit`, `cargo test`, `cargo clippy -- -D warnings` on `macos-latest` and `windows-latest`.
-- [ ] **Step 2: Windows run** on a Windows 10 or 11 machine: transparency, click-through, taskbar floor (bottom, left, right and top taskbar positions), no taskbar button, no Alt-Tab entry, tray menu.
-- [ ] **Step 3: Release checklist** in `docs/release-checklist.md`, covering both OSes: zero clicks lost outside a cat (10 clicks across Finder or Explorer and a browser), three cats for 10 minutes average under 2 % CPU and 150 MB memory (Activity Monitor, Task Manager), state survives quit and reboot, a friend gets the pet-and-trick moment within 10 seconds.
-- [ ] **Step 4: Build** `npm run tauri build` on both OSes; unsigned builds are fine for Phase 1. README covers install (including the macOS "unidentified developer" right-click Open) and the tray.
-- [ ] **Step 5: Commit** `chore: CI, Windows bundle and release checklist`.
+- [ ] **Step 1: CI** on `macos-latest` runs `npm ci`, `npm run art -- --placeholders`, `npm test`, `npx tsc --noEmit`, `cargo test`, `cargo clippy -- -D warnings`.
+- [ ] **Step 2: Release checklist** in `docs/release-checklist.md`: zero clicks lost outside a pet (10 clicks across Finder and a browser); Dock at bottom, left, right and auto-hidden; pets on every Space and over a fullscreen app's Space switch; three cats for 10 minutes average under 2 % CPU and 150 MB memory (Activity Monitor, counting the WebKit process); state survives quit and reboot; a friend gets the pet-and-trick moment within 10 seconds.
+- [ ] **Step 3: Build** `npm run tauri build`; an unsigned `.dmg` is fine for Phase 1. README covers install (right-click Open for the unidentified-developer warning), the menu bar menu, and how to drop GenAI art into `art/source` and run `npm run art`.
+- [ ] **Step 4: Run** the checklist on a real Mac and record results in the checklist file.
+- [ ] **Step 5: Commit** `chore: CI, macOS bundle and release checklist`.

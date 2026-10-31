@@ -56,7 +56,9 @@ No accounts, no telemetry, no analytics. Nothing leaves your computer except, if
 
 ## Tech
 
-[Tauri 2](https://v2.tauri.app): Rust for the desktop parts (transparent always-on-top overlay, click-through, screen area, idle time, tray, save file) and TypeScript on a canvas for the cats. The cat brain (mood, behaviour, trick learning) is plain, unit-tested TypeScript.
+[Tauri 2](https://v2.tauri.app) with Rust for the Mac parts (transparent always-on-top overlay, click-through, screen area, idle time, menu bar, save file) and TypeScript with [PixiJS 8](https://pixijs.com) for the pets. The pet brain (mood, behaviour, trick learning) is plain, unit-tested TypeScript.
+
+The art is GenAI pixel art drawn as cut-out parts (body, head, ears, eyes, tail, legs) plus a few key poses. Code animates the parts, and an art pipeline (`npm run art`) turns generated images into crisp, consistent sprite sheets.
 
 ## Docs
 

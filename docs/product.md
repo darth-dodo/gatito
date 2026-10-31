@@ -21,6 +21,7 @@
 - [Privacy and Data](#privacy-and-data)
 - [Decision Log (Locked)](#decision-log-locked)
 - [UX Principles](#ux-principles)
+- [Art](#art)
 - [Technical Architecture](#technical-architecture)
 - [Roadmap](#roadmap)
 - [Success Metrics](#success-metrics)
@@ -153,7 +154,7 @@ Each cat has two mood meters, 0 to 100:
 
 **Mood clock.** Mood and trick fading only move on **active time**: Windowsill running, the user active (input within the last 5 minutes *(tunable)*, using the OS idle time), and **Nap time** off. Time while the app is closed, the machine is asleep or locked, the user is away, or the cats are napping by request does not count. So neglect means *forgetting the cats while you work*, cats do not wake up grumpy every morning, and a holiday does not wipe their tricks. The save file therefore stores meter values, not timestamps. *(Claude's call.)*
 
-**Showing mood.** Mood shows mainly through *which* behaviours a cat picks and how often (a happy cat purrs, loafs and seeks you out; a grumpy one stares and gets zoomies), plus a small set of mood poses: **Content sit** (soft eyes, slow tail) and **Grumpy sit** (flattened ears, flicking tail). Ordinary animations are not drawn in multiple mood versions. There are no visible bars or numbers in Phase 1. *(Claude's call, to keep the art budget small.)*
+**Showing mood.** Mood shows mainly through *which* behaviours a cat picks and how often (a happy cat purrs, loafs and seeks you out; a grumpy one stares and gets zoomies), and through the cut-out parts: ear angle and tail speed follow mood continuously, so **Content sit** (soft ears, slow tail) and **Grumpy sit** (flattened ears, flicking tail) are the same sit pose with different part settings, not separate drawings. There are no visible bars or numbers in Phase 1. *(Claude's call, to keep the art budget small.)*
 
 **Personality weights.** Each personality shifts how likely each behaviour is:
 
@@ -285,7 +286,8 @@ A menu-bar icon: a small cat head.
 | Mischief limit | Visual and playful only; never moves, focuses or blocks real windows | Annoying would be a failure even if clever |
 | Mood clock | Only active time counts: app running, user active, Nap time off | Neglect means forgetting them while you work, not being away (Claude's call) |
 | Mood display | Through behaviour choice plus two mood poses, not mood variants of every animation | Keeps the art budget small (Claude's call) |
-| Stack | Tauri 2 (Rust) with a TypeScript canvas front end | Claude's call: small and light when running all day, suits sprites, Rust reaches OS window data |
+| Stack | Tauri 2 (Rust) with TypeScript and **PixiJS 8** for rendering and animation | Owner's choice of Tauri plus an animation library (2026-10-31); PixiJS is Claude's pick: sprites, meshes and particles without a game framework |
+| Art | Owner-made GenAI pixel art as cut-out parts and key poses, animated in code | Image models cannot keep animation frames consistent; code-driven parts can (owner's choice of GenAI, Claude's call on cut-out) |
 
 ---
 
@@ -300,13 +302,56 @@ A menu-bar icon: a small cat head.
 
 ---
 
+## Art
+
+The owner makes the art with GenAI image tools, in **pixel art**. Pets are **cut-out puppets**: separate parts that the code moves (tail swish, blinks, ears, walking legs, breathing), plus a few whole-body **key poses** for shapes parts cannot make. Image models are good at single images and bad at consistent animation frames, so all motion comes from code.
+
+**Grid and view.** Every image is pixel art on a **48 by 48 grid**, side view, **facing right** (the code mirrors it to face left), shown at 2x on screen *(tunable)*. Models rarely output true transparency, so images are generated on a flat **magenta `#FF00FF`** background that the art pipeline removes.
+
+**Parts (the standing puppet), per species and coat:**
+
+| Part | Notes |
+|------|-------|
+| `body` | Torso only: no head, legs or tail |
+| `head` | Facing right, without ears or eyes |
+| `ear-near`, `ear-far` | Rotate with mood |
+| `eyes-open`, `eyes-closed` | Swapped for blinks and sleep |
+| `tail` | Rotates and sways from its base |
+| `leg-front-near`, `leg-front-far`, `leg-back-near`, `leg-back-far` | Swing for walking and zoomies |
+| `paw-raised` | For **High five** |
+
+**Key poses (whole body, without the tail, which is layered on):**
+
+| Pose | Used for |
+|------|----------|
+| `sit` | **Idle sit**, **Content sit**, **Grumpy sit**, **Stare**, waiting for a cue |
+| `loaf` | **Loaf** |
+| `sleep-curl` | **Nap**, **Cuddle nap**; rotated for **Chase tail** |
+| `belly-up` | **Belly up**, the middle of **Roll over** |
+| `stretch` | **Stretch** |
+| `groom` | **Groom** |
+| `sit-up` | **Sit up** |
+| `dangle` | **Pick up** |
+
+**Spin** and **Roll over** are made in code by flipping and rotating the puppet and poses.
+
+**Coats.** The owner generates the full set once in **orange tabby**. The pipeline recolours it to **black**, **white** and **grey** by palette mapping. **Tuxedo**, **calico** and **Siamese** have patterns, so each is generated as its own full set. A coat only appears in **New pet** once its set exists.
+
+**Consistency tip.** Generate one full-body reference cat first, then pass it as the reference image for every part and pose, with the same prompt stem: *"pixel art, 48x48 grid, side view facing right, orange tabby cat, <part>, flat magenta #FF00FF background, no shadow, no text"*.
+
+**Art pipeline.** `npm run art` reads `art/source/<species>/<coat>/<name>.png`, removes the magenta, snaps to the 48 by 48 grid with nearest-neighbour scaling, limits each image to 16 colours, trims, and packs a PixiJS sprite sheet per species and coat into `src/assets/atlas/`. Part pivots (for example, the tail's base) come from `art/rig/<species>.json`. It fails with a list of anything missing or the wrong size.
+
+**Placeholders.** Until the owner's art exists, the pipeline produces simple code-drawn placeholder parts with the same names, so everything can be built and tested; dropping real images in needs no code change.
+
+---
+
 ## Technical Architecture
 
 - **Shell**: Tauri 2. One transparent, undecorated, always-on-top, non-focusable window sized to the primary display's full bounds; hidden from Dock, taskbar and Alt-Tab.
 - **Click-through**: the window ignores cursor events by default. Rust polls the global cursor position about 60 times a second and compares it against cat hit boxes reported by the front end; when the cursor is over a cat, cursor events are enabled, and they're disabled again when it leaves. Tauri's click-through is all or nothing per window, which is why this polling is needed.
 - **Floor**: the usable screen area (excluding the Dock and menu bar) comes from the OS through Rust and is sent to the front end on launch and whenever it changes.
-- **Front end**: TypeScript drawing on one canvas with a fixed-step simulation loop. Pure modules for the cat brain (mood, behaviour choice, learning) with no DOM access, so they are unit-testable.
-- **Art**: sprite sheets per species and style, one row per animation. Colours are palette swaps of one base sheet per style. Sprites scale by whole numbers so pixel art stays crisp.
+- **Front end**: TypeScript with a PixiJS 8 stage (one container per pet: puppet parts, poses and particles for hearts, "z" and sparkles) and a fixed-step simulation loop. Pure modules for the cat brain (mood, behaviour choice, learning) with no DOM access, so they are unit-testable.
+- **Art**: one PixiJS sprite sheet per species and coat, built by the art pipeline (see [Art](#art)). Pixel art scales by whole numbers with nearest-neighbour filtering so it stays crisp.
 - **Windows for forms**: **New pet** and settings are ordinary small Tauri windows.
 - **Persistence**: one versioned JSON file in the app-data folder, written on change (debounced) and on quit.
 - **Gemma**: HTTP calls from Rust to `http://localhost:11434`, with short timeouts; any failure falls back silently.
@@ -331,6 +376,7 @@ Phase 1 ships in vertical slices, each ending with something you can see on the 
 - Opt-in purring and meow sounds
 - Seasonal accessories (a scarf in winter)
 - Sharing a cat's learned tricks as a file
+- Rive for the smooth styles (Soft and cute, Silhouette): vector pets with mood-blended state machines
 
 ---
 
@@ -359,8 +405,7 @@ Phase 1 ships in vertical slices, each ending with something you can see on the 
 
 Left to whoever builds it, within this spec:
 
-- Exact sprite sizes, frame counts and the on-screen scale of a cat.
-- How the pixel art is made (hand-drawn sheets, or code-generated placeholders the owner can replace).
+- The look of placeholder art, part pivots and the exact motion curves of code-driven animation.
 - Animation timings, transition details and exact behaviour weights.
 - Code-signing and notarisation for distribution (unsigned local builds are fine for Phase 1).
 - Test tooling, within the rule that the cat brain is unit-tested.
