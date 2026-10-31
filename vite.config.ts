@@ -9,9 +9,10 @@ export default defineConfig({
   clearScreen: false,
   build: {
     rollupOptions: {
-      // The app overlay, plus a browser demo of the same pets on a pretend desktop.
+      // The app overlay, the New pet window, plus a browser demo of the same pets on a pretend desktop.
       input: {
         main: fileURLToPath(new URL("./index.html", import.meta.url)),
+        create: fileURLToPath(new URL("./create.html", import.meta.url)),
         demo: fileURLToPath(new URL("./demo.html", import.meta.url)),
       },
     },
