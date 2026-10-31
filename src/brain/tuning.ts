@@ -11,6 +11,8 @@ export const TUNING = {
   strokesForPurr: 3,
   strokeWindowSeconds: 2,
   strokeMinTravelPx: 12,
+  /** Keep stroking a purring cat with at least this affection and it rolls belly up. */
+  bellyUpMinAffection: 70,
   maxFrameDeltaSeconds: 0.25,
   cuddleNapIdleSeconds: 180,
   cuddleNapMinAffection: 70,
