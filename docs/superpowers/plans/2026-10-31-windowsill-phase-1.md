@@ -1,4 +1,4 @@
-# Gatito Phase 1 (MVP) Implementation Plan
+# Windowsill Phase 1 (MVP) Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -18,8 +18,8 @@
 - No accounts, no telemetry, no analytics; the app makes no network calls in Phase 1.
 - Clicks pass through everywhere except on a cat; the overlay never takes focus and never appears in the Dock, taskbar or Alt-Tab.
 - Cats never move, resize or focus real windows.
-- At most 6 gatitos. Name: required, up to 20 characters (count graphemes, trim whitespace).
-- Styles: `pixel` only in Phase 1 (the type lists all four). Colours: orange tabby, black, white, grey, tuxedo, calico, Siamese. Personalities: Cosy, Curious, Mischievous, Social; personality is fixed at birth.
+- At most 6 pets. Name: required, up to 20 characters (count graphemes, trim whitespace).
+- Species: `cat` only in Phase 1; the type includes `dog` (Phase 2) so dogs need no engine change. Styles: `pixel` only in Phase 1 (the type lists all four). Colours: orange tabby, black, white, grey, tuxedo, calico, Siamese. Personalities: Cosy, Curious, Mischievous, Social; personality is fixed at birth.
 - Cues: Whistle, Clap, Toy wand, Treat bag. Tricks: Spin, Sit up, Roll over, High five, Chase tail.
 - Mood and trick fading move only on active time: app running, user input within the last 300 s, Nap time off.
 - Save state: one versioned JSON file in the OS app-data folder; meter values, not timestamps.
@@ -30,7 +30,7 @@
 ## Review Focus
 
 1. **The usable screen area changes while running** (Dock resized or moved, resolution changed): every cat re-floors onto the new bottom edge and none is left off screen. Test in Task 7.
-2. **A corrupt, empty or newer-version save file**: the app starts with no cats (first run), keeps the bad file as `gatito.json.bad`, and never crashes. Test in Task 6.
+2. **A corrupt, empty or newer-version save file**: the app starts with no cats (first run), keeps the bad file as `windowsill.json.bad`, and never crashes. Test in Task 6.
 3. **A cat dropped or dragged off screen** (above the top, past an edge): it is clamped back inside the screen and lands on the floor. Test in Task 7.
 4. **Resume after sleep produces a huge frame delta**: the fixed-step loop clamps the delta so cats do not teleport and mood does not jump. Test in Task 9.
 5. **Awkward names** (only spaces, emoji, 21 graphemes, duplicates): spaces-only is rejected, emoji counts as one character each, the 21st grapheme is rejected, duplicate names are allowed. Test in Task 11.
@@ -40,11 +40,11 @@
 ## File Structure
 
 ```
-gatito/
+pet/
   package.json  tsconfig.json  vite.config.ts  index.html  create.html
   src/
     brain/                  pure logic, no DOM, unit tested
-      types.ts              Cat, Mood, Personality, Colour, Style, Cue, Trick, BehaviourName
+      types.ts              Pet, Species, Mood, Personality, Colour, Style, Cue, Trick, BehaviourName
       tuning.ts             every tunable number from the spec
       rng.ts                seeded Rng for deterministic tests
       mood.ts               meters over active time, petting, rewards
@@ -65,7 +65,7 @@ gatito/
       main.ts               overlay entry: loop, IPC wiring
       input.ts              hover, stroke, drag, right-click routing
       cueRing.ts            cue ring layout and hit test
-    create/main.ts          New and Edit gatito window
+    create/main.ts          New and Edit pet window
     ipc.ts                  typed wrappers for Tauri commands and events
   src-tauri/
     Cargo.toml  tauri.conf.json  capabilities/default.json
@@ -73,7 +73,7 @@ gatito/
     src/overlay.rs          overlay window setup and click-through polling
     src/screen.rs           usable screen area
     src/idle.rs             user idle seconds
-    src/store.rs            load and atomic save of gatito.json
+    src/store.rs            load and atomic save of windowsill.json
     src/tray.rs             tray menu
   tests/                    Vitest, mirrors src/ (tests/brain/mood.test.ts ...)
 ```
@@ -90,7 +90,7 @@ gatito/
 - Produces: Rust command `get_floor() -> Floor { x: f64, y: f64, width: f64, bottom: f64 }` in logical pixels relative to the overlay window (bottom is the usable area's bottom edge). Event `floor-changed` with the same payload. Front end `ipc.getFloor(): Promise<Floor>` and `ipc.onFloorChanged(cb)`.
 
 - [ ] **Step 1: Install prerequisites.** Rust stable via `rustup` (`curl https://sh.rustup.rs -sSf | sh`, then restart the shell); on macOS, Xcode Command Line Tools; on Windows, Visual Studio Build Tools and WebView2 (preinstalled on Windows 11). Verify: `cargo --version` prints a version.
-- [ ] **Step 2: Scaffold** a Tauri 2 + Vite + vanilla TypeScript app (`npm create tauri-app@latest`, template `vanilla-ts`, identifier `com.darthdodo.gatito`), then pin the npm versions listed in Tech Stack and add Vitest with `npm test` running `vitest run`.
+- [ ] **Step 2: Scaffold** a Tauri 2 + Vite + vanilla TypeScript app (`npm create tauri-app@latest`, template `vanilla-ts`, identifier `com.darthdodo.windowsill`), then pin the npm versions listed in Tech Stack and add Vitest with `npm test` running `vitest run`.
 - [ ] **Step 3: Write failing Rust test** `floor_uses_work_area_bottom`: given a monitor rect `(0,0,1440,900)` and work area `(0,25,1440,800)` (logical), `floor_from(monitor, work_area)` returns `Floor { x: 0, y: 25, width: 1440, bottom: 825 }`.
 - [ ] **Step 4: Run** `cd src-tauri && cargo test floor_uses_work_area_bottom`. Expected: FAIL, `floor_from` not found.
 - [ ] **Step 5: Implement** `screen.rs::floor_from(monitor: Rect, work: Rect) -> Floor` and `get_floor` using the primary monitor's `work_area()`; emit `floor-changed` when the monitor's work area differs on a 2 s poll.
@@ -109,11 +109,12 @@ gatito/
 - Produces:
   - `type Personality = 'cosy' | 'curious' | 'mischievous' | 'social'`
   - `type Colour = 'orange-tabby' | 'black' | 'white' | 'grey' | 'tuxedo' | 'calico' | 'siamese'`
+  - `type Species = 'cat' | 'dog'`
   - `type Style = 'pixel' | 'soft' | 'ink' | 'silhouette'`
   - `type Cue = 'whistle' | 'clap' | 'toy-wand' | 'treat-bag'`
   - `type Trick = 'spin' | 'sit-up' | 'roll-over' | 'high-five' | 'chase-tail'`
   - `interface Mood { affection: number; energy: number }` (0 to 100)
-  - `interface Cat { id: string; name: string; style: Style; colour: Colour; personality: Personality; mood: Mood; pairings: Pairings }` (`Pairings` from Task 4, declared here as `Record<Cue, Record<Trick, number>>`)
+  - `interface Pet { id: string; species: Species; name: string; style: Style; colour: Colour; personality: Personality; mood: Mood; pairings: Pairings }` (`Pairings` from Task 4, declared here as `Record<Cue, Record<Trick, number>>`)
   - `interface Rng { next(): number }` and `seededRng(seed: number): Rng` (mulberry32)
   - `tickMood(mood: Mood, activeSeconds: number, activity: 'napping' | 'resting' | 'active'): Mood`
   - `petMood(mood: Mood, strokes: number): Mood`, `rewardMood(mood: Mood): Mood`
@@ -137,8 +138,8 @@ gatito/
 - Test: `tests/brain/behaviour.test.ts`
 
 **Interfaces:**
-- Consumes: `Cat`, `Mood`, `Rng`, `TUNING`.
-- Produces: `type BehaviourName = 'idle-sit' | 'wander' | 'groom' | 'stretch' | 'nap' | 'loaf' | 'zoomies' | 'stare' | 'cuddle-nap' | 'content-sit' | 'grumpy-sit'`; `behaviourWeights(cat: Cat, ctx: { userIdleSeconds: number; justWoke: boolean }): Record<BehaviourName, number>`; `chooseBehaviour(cat, ctx, rng): BehaviourName`.
+- Consumes: `Pet`, `Mood`, `Rng`, `TUNING`.
+- Produces: `type BehaviourName = 'idle-sit' | 'wander' | 'groom' | 'stretch' | 'nap' | 'loaf' | 'zoomies' | 'stare' | 'cuddle-nap' | 'content-sit' | 'grumpy-sit'`; `behaviourWeights(pet: Pet, ctx: { userIdleSeconds: number; justWoke: boolean }): Record<BehaviourName, number>`; `chooseBehaviour(cat, ctx, rng): BehaviourName`.
 
 - [ ] **Step 1: Write failing tests:**
   - `tired cats mostly nap`: energy 10 gives `nap` the largest weight for every personality.
@@ -159,8 +160,8 @@ gatito/
 - Test: `tests/brain/learning.test.ts`
 
 **Interfaces:**
-- Consumes: `Cue`, `Trick`, `Cat`, `Rng`, `TUNING`.
-- Produces: `type Pairings = Record<Cue, Record<Trick, number>>`; `newPairings(): Pairings` (all 1.0); `guessTrick(p: Pairings, cue: Cue, rng: Rng): Trick`; `reward(p, cue, trick): Pairings`; `noReward(p, cue, trick): Pairings`; `fade(p, activeSeconds): Pairings`; `learnedTrick(p, cue): Trick | null`; `respondToCue(cat: Cat, cue: Cue, rng: Rng): { kind: 'perform'; trick: Trick; cheeky: boolean } | { kind: 'yawn' } | { kind: 'walk-away' }`.
+- Consumes: `Cue`, `Trick`, `Pet`, `Rng`, `TUNING`.
+- Produces: `type Pairings = Record<Cue, Record<Trick, number>>`; `newPairings(): Pairings` (all 1.0); `guessTrick(p: Pairings, cue: Cue, rng: Rng): Trick`; `reward(p, cue, trick): Pairings`; `noReward(p, cue, trick): Pairings`; `fade(p, activeSeconds): Pairings`; `learnedTrick(p, cue): Trick | null`; `respondToCue(pet: Pet, cue: Cue, rng: Rng): { kind: 'perform'; trick: Trick; cheeky: boolean } | { kind: 'yawn' } | { kind: 'walk-away' }`.
 
 - [ ] **Step 1: Write failing tests:**
   - `reward strengthens`: strength rises by 2.0.
@@ -204,13 +205,13 @@ gatito/
 - Test: `tests/brain/save.test.ts`, unit tests in `store.rs`
 
 **Interfaces:**
-- Consumes: `Cat`.
-- Produces: `interface SaveFile { version: 1; cats: Cat[]; settings: { napTime: boolean } }`; `serialise(s: SaveFile): string`; `parseSave(text: string): { ok: true; save: SaveFile } | { ok: false; reason: string }`; Rust commands `load_save() -> Option<String>` and `write_save(text: String)`; on a parse failure the front end calls `quarantine_save()` which renames the file to `gatito.json.bad`.
+- Consumes: `Pet`.
+- Produces: `interface SaveFile { version: 1; pets: Pet[]; settings: { napTime: boolean } }`; `serialise(s: SaveFile): string`; `parseSave(text: string): { ok: true; save: SaveFile } | { ok: false; reason: string }`; Rust commands `load_save() -> Option<String>` and `write_save(text: String)`; on a parse failure the front end calls `quarantine_save()` which renames the file to `windowsill.json.bad`.
 
-- [ ] **Step 1: Write failing TS tests:** round trip of two cats is identical; `parseSave('')`, `parseSave('{')`, `parseSave('{"version":2,...}')`, a cat with an unknown colour, and a meter of 150 each return `ok: false`; more than 6 cats is rejected.
-- [ ] **Step 2: Write failing Rust tests:** `write_is_atomic` (writes to `gatito.json.tmp` then renames; a pre-existing file survives a failed write); `quarantine_renames` moves the file to `gatito.json.bad`.
+- [ ] **Step 1: Write failing TS tests:** round trip of two cats is identical; `parseSave('')`, `parseSave('{')`, `parseSave('{"version":2,...}')`, a cat with an unknown colour, a pet with species `dog` (Phase 2, so rejected in Phase 1), and a meter of 150 each return `ok: false`; more than 6 cats is rejected.
+- [ ] **Step 2: Write failing Rust tests:** `write_is_atomic` (writes to `windowsill.json.tmp` then renames; a pre-existing file survives a failed write); `quarantine_renames` moves the file to `windowsill.json.bad`.
 - [ ] **Step 3: Run** `npm test -- save` and `cargo test store`. Expected: FAIL.
-- [ ] **Step 4: Implement.** File lives in `app.path().app_data_dir()`/`gatito.json`. Front end writes debounced 2 s after any change and on quit.
+- [ ] **Step 4: Implement.** File lives in `app.path().app_data_dir()`/`windowsill.json`. Front end writes debounced 2 s after any change and on quit.
 - [ ] **Step 5: Run both.** Expected: PASS.
 - [ ] **Step 6: Commit** `feat: versioned save file with atomic writes and quarantine`.
 
@@ -259,7 +260,7 @@ gatito/
 
 **Interfaces:**
 - Consumes: Tasks 2 to 8.
-- Produces: `frames(anim: AnimName): PixelFrame[]` where `AnimName` covers every `BehaviourName`, the five tricks, `walk`, `dangle`, `fall`, `land`, `purr`, `belly-up`, `yawn`; `PixelFrame = string[]` rows using palette keys (`o` outline, `f` fur, `s` second coat colour, `w` light, `p` pink, `e` eye); `paletteFor(colour: Colour): Record<string, string>`; `class CatController { constructor(cat: Cat, body: Body, rng: Rng); update(dt: number, ctx: ControllerContext): void; anim(): { name: AnimName; frame: number }; start(action: { kind: 'trick'; trick: Trick } | { kind: 'purr' } | ...): void }`; `drawCat(ctx2d, cat, body, anim, scale)`.
+- Produces: `frames(species: Species, anim: AnimName): PixelFrame[]` (only `cat` frames exist in Phase 1) where `AnimName` covers every `BehaviourName`, the five tricks, `walk`, `dangle`, `fall`, `land`, `purr`, `belly-up`, `yawn`; `PixelFrame = string[]` rows using palette keys (`o` outline, `f` fur, `s` second coat colour, `w` light, `p` pink, `e` eye); `paletteFor(colour: Colour): Record<string, string>`; `class CatController { constructor(pet: Pet, body: Body, rng: Rng); update(dt: number, ctx: ControllerContext): void; anim(): { name: AnimName; frame: number }; start(action: { kind: 'trick'; trick: Trick } | { kind: 'purr' } | ...): void }`; `drawCat(ctx2d, cat, body, anim, scale)`.
 
 - [ ] **Step 1: Write failing tests:**
   - `every animation has frames of equal size`: all frames of all `AnimName`s are 24 by 24.
@@ -289,7 +290,7 @@ gatito/
 - [ ] **Step 4: Run** tests. Expected: PASS. Manual: pet, pick up and drop on macOS.
 - [ ] **Step 5: Commit** `feat: petting, purring and pick up and drop`.
 
-### Task 11: Creating, editing and remembering gatitos
+### Task 11: Creating, editing and remembering pets
 
 **Files:**
 - Create: `src/brain/names.ts`, `create.html`, `src/create/main.ts`
@@ -301,9 +302,9 @@ gatito/
 
 - [ ] **Step 1: Write failing tests** (Review Focus 5): `'   '` is `empty`; `'  Mochi '` becomes `'Mochi'`; 20 emoji pass and 21 graphemes fail (`Intl.Segmenter`); two cats may share a name. Form: the seventh cat cannot be created (`maxCats` 6, the button is disabled with "6 cats is the limit"); personality is read-only when editing.
 - [ ] **Step 2: Run** `npm test -- names form`. Expected: FAIL.
-- [ ] **Step 3: Implement** **New gatito** (name, style with only Pixel enabled and the others shown as "coming soon", colour, personality, live preview using the renderer), **Edit gatito**, **Rehome gatito** (confirm dialog). A new cat drops in from the top of the screen. With no saved cats, **New gatito** opens on launch (**First run**). New cats start at affection 60, energy 80, `newPairings()`.
+- [ ] **Step 3: Implement** **New pet** (species with only Cat enabled and Dog shown as "coming in Phase 2", name, style with only Pixel enabled and the others shown as "coming soon", colour, personality, live preview using the renderer), **Edit pet**, **Rehome pet** (confirm dialog). A new cat drops in from the top of the screen. With no saved cats, **New pet** opens on launch (**First run**). New cats start at affection 60, energy 80, `newPairings()`.
 - [ ] **Step 4: Run** tests. Expected: PASS. Manual: create two cats, quit, relaunch, both return with their moods.
-- [ ] **Step 5: Commit** `feat: create, edit, rehome and remember gatitos`.
+- [ ] **Step 5: Commit** `feat: create, edit, rehome and remember pets`.
 
 ### Task 12: The cue ring and tricks
 
@@ -340,7 +341,7 @@ gatito/
 
 - [ ] **Step 1: Write failing tests:** `idle_never_panics` (returns a number on the CI host); `nap time hides and stops the clock`: with `napTime` on, cats play curl-up then fade out, `activeSeconds` returns 0, and toggling off fades them back with moods unchanged; `call over walks to the centre`.
 - [ ] **Step 2: Run** `cargo test idle` and `npm test -- napTime`. Expected: FAIL.
-- [ ] **Step 3: Implement** the tray: icon is a small cat head; items **New gatito…**, one submenu per cat (**Edit…**, **Call over**, **Rehome…**), **Nap time** (check item, persisted in settings), **Launch at login** (check item via `tauri-plugin-autostart`, off by default), **Quit Gatito** (saves first). The Gemma status entry is Phase 2 and is not added. The overlay polls `user_idle_seconds` every 5 s and feeds `activeSeconds` and **Cuddle nap**.
+- [ ] **Step 3: Implement** the tray: icon is a small cat head; items **New pet…**, one submenu per cat (**Edit…**, **Call over**, **Rehome…**), **Nap time** (check item, persisted in settings), **Launch at login** (check item via `tauri-plugin-autostart`, off by default), **Quit Windowsill** (saves first). The Gemma status entry is Phase 2 and is not added. The overlay polls `user_idle_seconds` every 5 s and feeds `activeSeconds` and **Cuddle nap**.
 - [ ] **Step 4: Run** tests. Expected: PASS.
 - [ ] **Step 5: Commit** `feat: tray menu, nap time, idle-aware clock and launch at login`.
 

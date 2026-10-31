@@ -1,29 +1,29 @@
-# Gatito
+# Windowsill
 
-> Little cats that live on your real desktop. Pet them, teach them tricks, and let them nap on your windows while you work.
+> Little cats, and soon dogs, that live on your Mac's desktop. Pet them, teach them tricks, and let them nap on your windows while you work.
 
 [![Tauri 2](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)](https://v2.tauri.app)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Rust](https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=white)](https://www.rust-lang.org)
-[![macOS and Windows](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows-lightgrey)](#status)
+[![macOS](https://img.shields.io/badge/platform-macOS-lightgrey?logo=apple)](#status)
 [![Built with Claude](https://img.shields.io/badge/Built%20with-Claude-cc785c?logo=anthropic&logoColor=white)](https://claude.ai)
 
-![Gatito: three pixel cats on a desktop, one perched on a code window, one napping above the Dock, one being petted](docs/assets/gatito-hero.svg)
+![Windowsill: pixel cats and a dog on a Mac desktop, one cat perched on a code window, one napping above the Dock, one being petted, and a golden dog wagging](docs/assets/windowsill-hero.svg)
 
 ---
 
 ## A cat on your screen
 
-Desktop pets used to be a small joy: a creature that shared your screen and made a long day feel less lonely. Gatito brings that back with cats that feel alive.
+Desktop pets used to be a small joy: a creature that shared your screen and made a long day feel less lonely. Windowsill brings that back with cats that feel alive.
 
-Each **gatito** has a name, a look, a personality and a mood. It naps above your Dock, wanders, grooms a paw and gets into mild trouble when you forget about it. You stroke it with the cursor and it purrs. You teach it tricks, and it actually learns them, one reward at a time.
+Each **pet** has a name, a look, a personality and a mood. It naps above your Dock, wanders, grooms a paw and gets into mild trouble when you forget about it. You stroke it with the cursor and it purrs. You teach it tricks, and it actually learns them, one reward at a time.
 
-**A desktop pet should make work feel warmer without ever getting in the way of it.** Clicks pass straight through to your apps everywhere except on a cat.
+**A desktop pet should make work feel warmer without ever getting in the way of it.** Clicks pass straight through to your apps everywhere except on a pet.
 
 ## What it feels like
 
-### 🐾 Make a gatito
-Pick a **name**, a **style** (pixel first; soft and cute, ink doodle and silhouette later), a **coat** (orange tabby, black, white, grey, tuxedo, calico, Siamese) and a **personality**: Cosy, Curious, Mischievous or Social. It drops in from the top of the screen and lands on its feet.
+### 🐾 Make a pet
+Pick a **species** (cats first, dogs in Phase 2), a **name**, a **style** (pixel first; soft and cute, ink doodle and silhouette later), a **coat** (cats: orange tabby, black, white, grey, tuxedo, calico, Siamese; dogs: golden, black, white, brown, spotted, tricolour, husky grey) and a **personality**: Cosy, Curious, Mischievous or Social. It drops in from the top of the screen and lands on its feet.
 
 ### 💤 It lives alongside you
 Mostly calm: napping, loafing, stretching awake, wandering a little. Curious cats explore, cosy ones curl up near your cursor when you step away.
@@ -50,8 +50,8 @@ No accounts, no telemetry, no analytics. Nothing leaves your computer except, if
 
 | Phase | Scope |
 |-------|-------|
-| **1 (MVP)** | Pixel cats on the floor of the screen, click-through, create and remember cats, mood, petting, pick up and drop, cue ring tricks, tray menu, macOS and Windows builds |
-| **2** | Cats walk on top of your windows, cursor play, cats playing together, hide during fullscreen apps, Gemma thought bubbles |
+| **1 (MVP)** | Pixel cats on the floor of the screen, click-through, create and remember cats, mood, petting, pick up and drop, cue ring tricks, menu bar menu, macOS build |
+| **2** | Dogs, cats walk on top of your windows, cursor play, cats playing together, hide during fullscreen apps, Gemma thought bubbles |
 | **3** | Soft, ink and silhouette styles, talk to them, name help, daily diary, cursor-wave cues, multiple monitors |
 
 ## Tech
@@ -60,5 +60,5 @@ No accounts, no telemetry, no analytics. Nothing leaves your computer except, if
 
 ## Docs
 
-- [Product specification](docs/product.md): what Gatito does, precisely
-- [Phase 1 implementation plan](docs/superpowers/plans/2026-10-31-gatito-phase-1.md): the build, task by task
+- [Product specification](docs/product.md): what Windowsill does, precisely
+- [Phase 1 implementation plan](docs/superpowers/plans/2026-10-31-windowsill-phase-1.md): the build, task by task
