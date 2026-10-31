@@ -255,6 +255,32 @@ describe('InputRouter pick up and drop', () => {
     expect(router.heldId()).toBe('mochi');
   });
 
+  it("pointerMove reports 'lifted' exactly once per hold, on the move that picks the cat up", () => {
+    const { router, pets } = setup([{ id: 'mochi', x: 400 }]);
+    const b = pets[0]!.body;
+    const results: (string | undefined)[] = [];
+    router.pointerDown(420, 760, 0);
+    results.push(router.pointerMove(422, 760, 0.01, 1));
+    results.push(router.pointerMove(430, 760, 0.02, 1));
+    results.push(router.pointerMove(480, 600, 0.03, 1));
+    results.push(router.pointerMove(500, 500, 0.04, 1));
+    expect(results.filter((r) => r === 'lifted')).toHaveLength(1);
+    expect(results[1]).toBe('lifted');
+    router.pointerUp(500, 500);
+
+    router.pointerDown(b.x + 10, b.y + 10, 0);
+    expect(router.pointerMove(b.x + 30, b.y + 10, 0.1, 1)).toBe('lifted');
+    expect(router.pointerMove(b.x + 40, b.y + 10, 0.11, 1)).toBeUndefined();
+  });
+
+  it("a plain click and plain strokes never report 'lifted'", () => {
+    const { router } = setup([{ id: 'mochi', x: 400 }]);
+    router.pointerDown(420, 760, 0);
+    expect(router.pointerMove(421, 760, 0.01, 1)).toBeUndefined();
+    router.pointerUp(421, 760);
+    expect(router.pointerMove(450, 760, 0.1, 0)).toBeUndefined();
+  });
+
   it('releases a held cat when a move arrives with the left button up', () => {
     const { router, world } = setup([{ id: 'mochi', x: 400 }]);
     const drop = vi.spyOn(world, 'drop');

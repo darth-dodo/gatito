@@ -113,7 +113,7 @@ function hitboxPusher(host: PetHost): (bodies: readonly Body[], now: number, hel
 
 /**
  * Feeds the canvas's pointer events to the router. The overlay only gets them while the cursor
- * is over a pet hit box; a held pet captures the pointer so the drag survives fast moves.
+ * is over a pet hit box; a pet captures the pointer as it lifts so the drag survives fast moves.
  */
 function listenPointer(canvas: HTMLCanvasElement, router: InputRouter): Unlisten {
   const off = new AbortController();
@@ -121,7 +121,12 @@ function listenPointer(canvas: HTMLCanvasElement, router: InputRouter): Unlisten
   canvas.style.touchAction = 'none';
   canvas.addEventListener(
     'pointermove',
-    (e) => router.pointerMove(e.clientX, e.clientY, e.timeStamp / 1000, e.buttons),
+    (e) => {
+      // Capture as the pet lifts, so a fast drag keeps every move and the release.
+      if (router.pointerMove(e.clientX, e.clientY, e.timeStamp / 1000, e.buttons) === 'lifted') {
+        canvas.setPointerCapture(e.pointerId);
+      }
+    },
     opts,
   );
   canvas.addEventListener(
@@ -129,7 +134,6 @@ function listenPointer(canvas: HTMLCanvasElement, router: InputRouter): Unlisten
     (e) => {
       if (e.button !== 0 && e.button !== 2) return;
       router.pointerDown(e.clientX, e.clientY, e.button);
-      if (router.heldId() !== null) canvas.setPointerCapture(e.pointerId);
     },
     opts,
   );

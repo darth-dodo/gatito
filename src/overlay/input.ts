@@ -81,28 +81,34 @@ export class InputRouter {
     return this.hold?.lifted ? this.hold.id : null;
   }
 
-  /** `buttons` is the PointerEvent bitmask; bit 1 is the left button. */
-  pointerMove(x: number, y: number, t: number, buttons: number): void {
+  /**
+   * `buttons` is the PointerEvent bitmask; bit 1 is the left button. Returns 'lifted' on the one
+   * move per hold that picks the pet up, so the host can capture the pointer right then.
+   */
+  pointerMove(x: number, y: number, t: number, buttons: number): 'lifted' | undefined {
     const hold = this.hold;
     if (hold) {
       // The mouse-up went somewhere else: never leave a pet stuck in the air.
       if ((buttons & 1) === 0) {
         this.release();
-        return;
+        return undefined;
       }
+      let lifted: 'lifted' | undefined;
       if (!hold.lifted) {
-        if (Math.hypot(x - hold.pressX, y - hold.pressY) < TUNING.dragStartPx) return;
+        if (Math.hypot(x - hold.pressX, y - hold.pressY) < TUNING.dragStartPx) return undefined;
         hold.lifted = true;
+        lifted = 'lifted';
         this.deps.world.pickUp(hold.id, hold.pressX - hold.dx, hold.pressY - hold.dy);
       }
       this.deps.world.dragTo(hold.id, x - hold.dx, y - hold.dy);
-      return;
+      return lifted;
     }
     const target = this.hit(x, y);
     if (target?.body.id !== this.over) this.leaveStroking();
-    if (!target) return;
+    if (!target) return undefined;
     this.over = target.body.id;
     this.stroke(target, x, t);
+    return undefined;
   }
 
   pointerDown(x: number, y: number, button: 0 | 2): void {
