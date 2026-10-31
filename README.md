@@ -8,6 +8,8 @@
 [![macOS and Windows](https://img.shields.io/badge/platforms-macOS%20%7C%20Windows-lightgrey)](#status)
 [![Built with Claude](https://img.shields.io/badge/Built%20with-Claude-cc785c?logo=anthropic&logoColor=white)](https://claude.ai)
 
+![Gatito: three pixel cats on a desktop, one perched on a code window, one napping above the Dock, one being petted](docs/assets/gatito-hero.svg)
+
 ---
 
 ## A cat on your screen
