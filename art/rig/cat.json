@@ -1,5 +1,5 @@
 {
-  "cell": 48,
+  "cell": 96,
   "note": "Parts are drawn in place in the assembled standing cat. anchor is the pivot in 0..1 cell coordinates. offset is the pivot position in cell pixels relative to the body pivot. z is draw order, low first.",
   "parts": {
     "body": {
@@ -20,8 +20,8 @@
       ],
       "z": 5,
       "offset": [
-        8,
-        -6
+        16,
+        -12
       ]
     },
     "ear-near": {
@@ -31,8 +31,8 @@
       ],
       "z": 6,
       "offset": [
-        13,
-        -15
+        26,
+        -30
       ]
     },
     "ear-far": {
@@ -42,8 +42,8 @@
       ],
       "z": 3,
       "offset": [
-        19,
-        -15
+        38,
+        -30
       ]
     },
     "eyes-open": {
@@ -53,8 +53,8 @@
       ],
       "z": 7,
       "offset": [
-        17,
-        -10
+        34,
+        -20
       ]
     },
     "eyes-closed": {
@@ -64,8 +64,8 @@
       ],
       "z": 7,
       "offset": [
-        17,
-        -10
+        34,
+        -20
       ]
     },
     "tail": {
@@ -75,7 +75,7 @@
       ],
       "z": 0,
       "offset": [
-        -12,
+        -24,
         0
       ]
     },
@@ -86,8 +86,8 @@
       ],
       "z": 9,
       "offset": [
-        8,
-        4
+        16,
+        8
       ]
     },
     "leg-front-far": {
@@ -97,8 +97,8 @@
       ],
       "z": 2,
       "offset": [
-        13,
-        4
+        26,
+        8
       ]
     },
     "leg-back-near": {
@@ -108,8 +108,8 @@
       ],
       "z": 8,
       "offset": [
-        -10,
-        4
+        -20,
+        8
       ]
     },
     "leg-back-far": {
@@ -119,8 +119,8 @@
       ],
       "z": 1,
       "offset": [
-        -5,
-        4
+        -10,
+        8
       ]
     },
     "paw-raised": {
@@ -130,8 +130,8 @@
       ],
       "z": 10,
       "offset": [
-        12,
-        2
+        24,
+        4
       ]
     }
   }

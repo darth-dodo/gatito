@@ -306,7 +306,7 @@ A menu-bar icon: a small cat head.
 
 The owner makes the art with GenAI image tools, in **pixel art**. Pets are **cut-out puppets**: separate parts that the code moves (tail swish, blinks, ears, walking legs, breathing), plus a few whole-body **key poses** for shapes parts cannot make. Image models are good at single images and bad at consistent animation frames, so all motion comes from code.
 
-**Grid and view.** Every image is pixel art on a **48 by 48 grid**, side view, **facing right** (the code mirrors it to face left), shown at 2x on screen *(tunable)*. Models rarely output true transparency, so images are generated on a flat **magenta `#FF00FF`** background that the art pipeline removes.
+**Grid and view.** Every image is pixel art on a **96 by 96 grid**, side view, **facing right** (the code mirrors it to face left), shown at 1x on screen *(tunable)*. Models rarely output true transparency, so images are generated on a flat **magenta `#FF00FF`** background that the art pipeline removes.
 
 **Parts (the standing puppet), per species and coat:**
 
@@ -324,7 +324,7 @@ The owner makes the art with GenAI image tools, in **pixel art**. Pets are **cut
 
 | Pose | Used for |
 |------|----------|
-| `sit` | **Idle sit**, **Content sit**, **Grumpy sit**, **Stare**, waiting for a cue |
+| `sit` | **Idle sit**, **Content sit**, **Grumpy sit**, **Stare**, waiting for a cue; drawn without ears and eyes, which are layered on as parts |
 | `loaf` | **Loaf** |
 | `sleep-curl` | **Nap**, **Cuddle nap**; rotated for **Chase tail** |
 | `belly-up` | **Belly up**, the middle of **Roll over** |
@@ -337,9 +337,9 @@ The owner makes the art with GenAI image tools, in **pixel art**. Pets are **cut
 
 **Coats.** The owner generates the full set once in **orange tabby**. The pipeline recolours it to **black**, **white** and **grey** by palette mapping. **Tuxedo**, **calico** and **Siamese** have patterns, so each is generated as its own full set. A coat only appears in **New pet** once its set exists.
 
-**Consistency tip.** Generate one full-body reference cat first, then pass it as the reference image for every part and pose, with the same prompt stem: *"pixel art, 48x48 grid, side view facing right, orange tabby cat, <part>, flat magenta #FF00FF background, no shadow, no text"*.
+**Consistency tip.** Generate one full-body reference cat first, then pass it as the reference image for every part and pose, with the same prompt stem: *"pixel art, 96x96 grid, side view facing right, orange tabby cat, <part>, flat magenta #FF00FF background, no shadow, no text"*.
 
-**Art pipeline.** `npm run art` reads `art/source/<species>/<coat>/<name>.png`, removes the magenta, snaps to the 48 by 48 grid with nearest-neighbour scaling, limits each image to 16 colours, trims, and packs a PixiJS sprite sheet per species and coat into `src/assets/atlas/`. Part pivots (for example, the tail's base) come from `art/rig/<species>.json`. It fails with a list of anything missing or the wrong size.
+**Art pipeline.** `npm run art` reads `art/source/<species>/<coat>/<name>.png`, removes the magenta, snaps to the 96 by 96 grid with nearest-neighbour scaling, limits each image to 16 colours, trims, and packs a PixiJS sprite sheet per species and coat into `src/assets/atlas/`. Part pivots (for example, the tail's base) come from `art/rig/<species>.json`. It fails with a list of anything missing or the wrong size.
 
 **Placeholders.** Until the owner's art exists, the pipeline produces simple code-drawn placeholder parts with the same names, so everything can be built and tested; dropping real images in needs no code change.
 

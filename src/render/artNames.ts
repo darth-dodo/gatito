@@ -1,3 +1,6 @@
+/** Every art image is a square cell of this many pixels, shown at TUNING.renderScale. */
+export const ART_CELL = 96;
+
 /** Cut-out parts of the standing puppet. Task 10 looks sprite sheet frames up by these exact names. */
 export const PART_NAMES = [
   'body',

@@ -6,7 +6,7 @@ import sharp from 'sharp';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildAtlas } from '../../scripts/art/build';
 import { writePlaceholders } from '../../scripts/art/placeholder';
-import { PART_NAMES, POSE_NAMES } from '../../src/render/artNames';
+import { ART_CELL, PART_NAMES, POSE_NAMES } from '../../src/render/artNames';
 import {
   blockColour,
   blocks480,
@@ -49,21 +49,22 @@ describe('buildAtlas', () => {
     await writeFullSet(src);
     const { outDir } = await build(src);
     const cell = await cellOf(outDir, 'body');
-    const px = (x: number, y: number) => Array.from(cell.subarray((y * 48 + x) * 4, (y * 48 + x) * 4 + 4));
+    const px = (x: number, y: number) =>
+      Array.from(cell.subarray((y * ART_CELL + x) * 4, (y * ART_CELL + x) * 4 + 4));
     expect(px(0, 0)[3]).toBe(0);
-    expect(px(47, 47)[3]).toBe(0);
-    expect(px(20, 20)).toEqual([...CAT_FILL, 255]);
-    expect(px(10, 10)).toEqual([...CAT_OUTLINE, 255]);
+    expect(px(95, 95)[3]).toBe(0);
+    expect(px(40, 40)).toEqual([...CAT_FILL, 255]);
+    expect(px(20, 20)).toEqual([...CAT_OUTLINE, 255]);
   });
 
-  it('any size snaps to the 48 grid with nearest neighbour', async () => {
+  it('any size snaps to the 96 grid with nearest neighbour', async () => {
     const src = join(root, 'src');
     await writeFullSet(src);
     writeFileSync(join(src, 'body.png'), await blocks480());
     const { outDir } = await build(src);
     const cell = await cellOf(outDir, 'body');
-    for (const [bx, by] of [[0, 0], [1, 0], [7, 3], [47, 47], [20, 33]]) {
-      const i = (by * 48 + bx) * 4;
+    for (const [bx, by] of [[0, 0], [1, 0], [7, 3], [95, 95], [47, 47], [20, 81]]) {
+      const i = (by * ART_CELL + bx) * 4;
       expect(Array.from(cell.subarray(i, i + 3))).toEqual(blockColour(bx, by));
     }
   });
@@ -93,7 +94,7 @@ describe('buildAtlas', () => {
   it('rejects an image that is not square', async () => {
     const src = join(root, 'src');
     await writeFullSet(src);
-    writeFileSync(join(src, 'head.png'), await sharp(await magentaCat()).resize(48, 30, { fit: 'fill' }).png().toBuffer());
+    writeFileSync(join(src, 'head.png'), await sharp(await magentaCat()).resize(96, 60, { fit: 'fill' }).png().toBuffer());
     await expect(build(src)).rejects.toThrow(/head/);
   });
 
@@ -108,9 +109,11 @@ describe('buildAtlas', () => {
       expect(atlas.frames[name].anchor).toEqual({ x: rig.parts[name].anchor[0], y: rig.parts[name].anchor[1] });
     }
     expect(atlas.frames.sit.anchor).toBeUndefined();
-    expect(atlas.frames.body.sourceSize).toEqual({ w: 48, h: 48 });
-    expect(atlas.frames.body.frame).toEqual({ x: 0, y: 0, w: 48, h: 48 });
-    expect(atlas.frames.head.frame).toEqual({ x: 48, y: 0, w: 48, h: 48 });
+    expect(ART_CELL).toBe(96);
+    expect(rig.cell).toBe(ART_CELL);
+    expect(atlas.frames.body.sourceSize).toEqual({ w: 96, h: 96 });
+    expect(atlas.frames.body.frame).toEqual({ x: 0, y: 0, w: 96, h: 96 });
+    expect(atlas.frames.head.frame).toEqual({ x: 96, y: 0, w: 96, h: 96 });
     expect(atlas.meta).toMatchObject({ image: 'cat-orange-tabby.png', scale: '1' });
     const { info } = await rawOf(join(outDir, 'cat-orange-tabby.png'));
     expect(atlas.meta.size).toEqual({ w: info.width, h: info.height });
@@ -153,12 +156,12 @@ describe('npm run art', () => {
       const atlas = JSON.parse(readFileSync(join(out, `cat-${coat}.json`), 'utf8'));
       const { x, y } = atlas.frames.body.frame;
       const cell = await sharp(join(out, `cat-${coat}.png`))
-        .extract({ left: x, top: y, width: 48, height: 48 })
+        .extract({ left: x, top: y, width: 96, height: 96 })
         .ensureAlpha()
         .raw()
         .toBuffer();
       expect(cell[3], coat).toBe(0);
-      expect(cell[(47 * 48 + 47) * 4 + 3], coat).toBe(0);
+      expect(cell[(95 * 96 + 95) * 4 + 3], coat).toBe(0);
       for (let i = 0; i < cell.length; i += 4) {
         if (cell[i + 3] > 0) expect([cell[i], cell[i + 1], cell[i + 2]], coat).not.toEqual([232, 144, 154]);
       }

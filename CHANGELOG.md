@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - World physics: gravity, dragging and dropping, walkers turning at screen edges, re-flooring when the Dock moves, and clamping pets dropped off screen ([#9](https://github.com/darth-dodo/windowsill/pull/9)).
 - Click-through: clicks pass to your apps everywhere except on a pet, measured from the overlay's real position so pets sit correctly even when macOS nudges the window below the menu bar, and correct on Retina ([#11](https://github.com/darth-dodo/windowsill/pull/11)).
 - Art pipeline: `npm run art` turns GenAI pixel art (12 cut-out parts and 8 key poses on a magenta background) into PixiJS sprite sheets, recolours orange tabby into black, white and grey, and ships readable placeholder cats until real art lands; CI checks the committed sheets are current by comparing pixels ([#13](https://github.com/darth-dodo/windowsill/pull/13)).
+- Pets on screen: PixiJS cut-out puppets that walk, sit, groom, stretch, loaf, nap with a floating "z" and blink, with ears and tail showing mood, smooth cross-fades between poses, and a sleeping cat that stretches before stepping out from under a still cursor ([#14](https://github.com/darth-dodo/windowsill/pull/14)).
 - Claude Code project skills for syncing stacked PRs, cutting a release and adding pet art, plus a repo `CLAUDE.md`; `npm run check` now runs every CI gate locally.
+
+### Changed
+
+- Pet art uses a 96 by 96 grid shown at 1x instead of 48 by 48 at 2x, so generated art keeps its detail at the same size on screen; the `sit` pose is drawn without ears and eyes, which are layered on ([#14](https://github.com/darth-dodo/windowsill/pull/14)).
 
 [Unreleased]: https://github.com/darth-dodo/windowsill/commits/main
