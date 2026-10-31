@@ -1,0 +1,18 @@
+export const TUNING = {
+  affectionDrainPerHour: 10,
+  energyNapPerHour: 40,
+  energyActivePerHour: 15,
+  affectionPerStroke: 2,
+  affectionPerReward: 5,
+  activeIdleSeconds: 300,
+  underCursorSeconds: 2,
+  strokesForPurr: 3,
+  strokeWindowSeconds: 2,
+  cuddleNapIdleSeconds: 180,
+  rewardWindowSeconds: 3,
+  learnedShare: 0.8,
+  fadeActiveHours: 40,
+  cheekyChance: 1 / 7,
+  maxCats: 6,
+  maxNameLength: 20,
+} as const;
