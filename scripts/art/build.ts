@@ -3,17 +3,16 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import sharp from 'sharp';
-import { COLOURS, SPECIES, type Colour, type Species } from '../../src/brain/types';
+import { COATS, SPECIES, type Colour, type Species } from '../../src/brain/types';
 import { ART_CELL, PART_NAMES, POSE_NAMES, WALK_FRAME_NAMES } from '../../src/render/artNames';
 import { defringe } from './defringe';
 import { PLACEHOLDER_COATS, writePlaceholders } from './placeholder';
-import { isKey, KEPT_COLOURS, recolour } from './recolour';
+import { BASE_COAT, DERIVED_COATS, isKey, KEPT_COLOURS, recolour } from './recolour';
 
 const CELL = ART_CELL;
 const COLUMNS = 5;
 const MAX_COLOURS = 16;
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
-const DERIVED_COATS: readonly Colour[] = ['black', 'white', 'grey'];
 
 interface Rig {
   parts: Record<string, { anchor: [number, number]; z: number; offset: [number, number] }>;
@@ -152,22 +151,24 @@ export async function main(args: string[]): Promise<number> {
 
   try {
     for (const species of SPECIES.filter((s) => existsSync(join(ROOT, 'art/rig', `${s}.json`)))) {
-      const tabbyDir = join(src, species, 'orange-tabby');
-      for (const coat of COLOURS) {
+      const base = BASE_COAT[species];
+      const baseDir = join(src, species, base);
+      const derived: readonly Colour[] = DERIVED_COATS[species];
+      for (const coat of COATS[species]) {
         const label = `${species}/${coat}`;
         let dir = join(src, species, coat);
         if (!existsSync(dir)) {
           const scratch = join(temp, `${species}-${coat}`);
-          if (DERIVED_COATS.includes(coat) && existsSync(tabbyDir)) {
+          if (derived.includes(coat) && existsSync(baseDir)) {
             mkdirSync(scratch, { recursive: true });
             for (const n of [...PART_NAMES, ...POSE_NAMES, ...WALK_FRAME_NAMES]) {
-              const file = join(tabbyDir, `${n}.png`);
+              const file = join(baseDir, `${n}.png`);
               if (existsSync(file)) {
-                writeFileSync(join(scratch, `${n}.png`), await recolour(readFileSync(file), 'orange-tabby', coat));
+                writeFileSync(join(scratch, `${n}.png`), await recolour(readFileSync(file), base, coat));
               }
             }
-            console.log(`${label}: recoloured from orange-tabby`);
-          } else if (placeholders && (PLACEHOLDER_COATS as readonly Colour[]).includes(coat)) {
+            console.log(`${label}: recoloured from ${base}`);
+          } else if (placeholders && PLACEHOLDER_COATS[species].includes(coat)) {
             await writePlaceholders(species, coat, scratch);
             console.log(`${label}: placeholders`);
           } else {

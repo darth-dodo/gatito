@@ -5,7 +5,7 @@ import type { Body, Position } from '../sim/world';
 import { PART_NAMES, type PartName } from './artNames';
 import type { FloatingZ, Heart, Sparkle } from './effects';
 import { fadeKey, nextFade, NO_FADE, topAlpha, type FadeState } from './fade';
-import { CAT_BOX, CELL, RIG, type RigFrame } from './rig';
+import { CAT_BOX, CELL, RIGS, type RigFrame, type SpeciesRig } from './rig';
 
 /** How long two poses cross-fade so a cat never snaps between them. */
 const TRANSITION_MS = 150;
@@ -38,6 +38,7 @@ interface Entry {
   hearts: Container;
   sparkles: Container;
   sheet: Spritesheet;
+  rig: SpeciesRig;
 }
 
 /** A centred pixel glyph from '#' rows, with a one-block drop shadow. */
@@ -72,7 +73,8 @@ export class PetStage {
     this.remove(pet.id);
     atlas.textureSource.scaleMode = 'nearest';
     const outer = new Container({ sortableChildren: true });
-    const looks: [Look, Look] = [this.look(atlas), this.look(atlas)];
+    const rig = RIGS[pet.species];
+    const looks: [Look, Look] = [this.look(atlas, rig), this.look(atlas, rig)];
     looks[1].root.visible = false;
     const fx = new Container();
     fx.scale.set(TUNING.renderScale);
@@ -85,7 +87,7 @@ export class PetStage {
     sparkles.zIndex = 2;
     outer.addChild(looks[0].root, looks[1].root, fx, hearts, sparkles);
     this.layer.addChild(outer);
-    this.entries.set(pet.id, { outer, looks, fade: NO_FADE, facing: 1, fx, hearts, sparkles, sheet: atlas });
+    this.entries.set(pet.id, { outer, looks, fade: NO_FADE, facing: 1, fx, hearts, sparkles, sheet: atlas, rig });
   }
 
   remove(id: string): void {
@@ -104,7 +106,7 @@ export class PetStage {
     e.facing = facing;
 
     // The body pivot inside the cell, mirrored about the cell centre when facing left.
-    const [ax, ay] = RIG.body.anchor;
+    const [ax, ay] = e.rig.parts.body.anchor;
     const pivotX = facing === 1 ? ax * CELL : CELL - ax * CELL;
     e.outer.position.set(
       // Origin and offset are rounded apart so the sprite sits exactly on drawnBox (sim/world).
@@ -177,19 +179,19 @@ export class PetStage {
     });
   }
 
-  private look(atlas: Spritesheet): Look {
+  private look(atlas: Spritesheet, rig: SpeciesRig): Look {
     const root = new Container({ sortableChildren: true });
     const parts = {} as Record<PartName, Sprite>;
     for (const name of PART_NAMES) {
       const sprite = new Sprite(atlas.textures[name]);
-      sprite.anchor.set(...RIG[name].anchor);
-      sprite.zIndex = RIG[name].z;
+      sprite.anchor.set(...rig.parts[name].anchor);
+      sprite.zIndex = rig.parts[name].z;
       parts[name] = sprite;
       root.addChild(sprite);
     }
     const pose = new Sprite();
-    pose.anchor.set(...RIG.body.anchor);
-    pose.zIndex = RIG.body.z;
+    pose.anchor.set(...rig.parts.body.anchor);
+    pose.zIndex = rig.parts.body.z;
     root.addChild(pose);
     return { root, parts, pose };
   }

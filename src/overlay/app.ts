@@ -363,10 +363,10 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
         });
       }
       const { name, t } = nap.curled ? curledAnim(napT) : c.anim();
-      const frame = rigPose(name, t, c.pet.mood, { walkFrames });
+      const frame = rigPose(name, t, c.pet.mood, { walkFrames, species: c.pet.species });
       stage.setAlpha(c.pet.id, nap.alpha);
       stage.draw(c.pet.id, b, frame, world.drawPosition(b));
-      stage.drawZs(c.pet.id, name === 'nap' || name === 'cuddle-nap' ? floatingZs(t, headTop(frame.pose)) : []);
+      stage.drawZs(c.pet.id, name === 'nap' || name === 'cuddle-nap' ? floatingZs(t, headTop(frame.pose, c.pet.species)) : []);
       const tapAge = nowSeconds - (tappedAt.get(c.pet.id) ?? -Infinity);
       stage.drawHearts(c.pet.id, name === 'purr' ? risingHearts(t) : heartBurst(tapAge));
       stage.drawSparkles(c.pet.id, sparkleBurst(nowSeconds - (learnedAt.get(c.pet.id) ?? -Infinity)));

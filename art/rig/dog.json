@@ -1,0 +1,224 @@
+{
+  "cell": 96,
+  "note": "Parts are drawn in place in the assembled standing dog (cut from reference.png by scripts/art/cut-parts.ts); see cat.json for the fields. The tail art points left from its base, so on the floor its rest rotation is about 0 and clockwise lifts it. A poseTail with drawn: true means the pose image has its own tail, so the tail part is hidden there.",
+  "parts": {
+    "body": {
+      "anchor": [
+        0.4583,
+        0.5833
+      ],
+      "z": 4,
+      "offset": [
+        0,
+        0
+      ]
+    },
+    "head": {
+      "anchor": [
+        0.8333,
+        0.375
+      ],
+      "z": 5,
+      "offset": [
+        36,
+        -20
+      ]
+    },
+    "ear-near": {
+      "anchor": [
+        0.7708,
+        0.2083
+      ],
+      "z": 6,
+      "offset": [
+        30,
+        -36
+      ]
+    },
+    "ear-far": {
+      "anchor": [
+        0.776,
+        0.25
+      ],
+      "z": 3,
+      "offset": [
+        31,
+        -32
+      ]
+    },
+    "eyes-open": {
+      "anchor": [
+        0.875,
+        0.2708
+      ],
+      "z": 7,
+      "offset": [
+        40,
+        -30
+      ]
+    },
+    "eyes-closed": {
+      "anchor": [
+        0.875,
+        0.2708
+      ],
+      "z": 7,
+      "offset": [
+        40,
+        -30
+      ]
+    },
+    "tail": {
+      "anchor": [
+        0.25,
+        0.5312
+      ],
+      "z": 0,
+      "offset": [
+        -20,
+        -5
+      ]
+    },
+    "leg-front-near": {
+      "anchor": [
+        0.6771,
+        0.5625
+      ],
+      "z": 9,
+      "offset": [
+        21,
+        -2
+      ]
+    },
+    "leg-front-far": {
+      "anchor": [
+        0.7917,
+        0.5625
+      ],
+      "z": 2,
+      "offset": [
+        32,
+        -2
+      ]
+    },
+    "leg-back-near": {
+      "anchor": [
+        0.2812,
+        0.5625
+      ],
+      "z": 8,
+      "offset": [
+        -17,
+        -2
+      ]
+    },
+    "leg-back-far": {
+      "anchor": [
+        0.4167,
+        0.5625
+      ],
+      "z": 1,
+      "offset": [
+        -4,
+        -2
+      ]
+    },
+    "paw-raised": {
+      "anchor": [
+        0.6458,
+        0.5417
+      ],
+      "z": 10,
+      "offset": [
+        18,
+        -4
+      ]
+    }
+  },
+  "poseTail": {
+    "sit": {
+      "x": -22,
+      "y": 23,
+      "rotation": 0.15,
+      "swing": 1
+    },
+    "loaf": {
+      "x": -20,
+      "y": 10,
+      "rotation": 3.0,
+      "swing": 0.15,
+      "drawn": true
+    },
+    "sleep-curl": {
+      "x": -32,
+      "y": 0,
+      "rotation": -0.3,
+      "swing": 0.3,
+      "drawn": true
+    },
+    "belly-up": {
+      "x": -32,
+      "y": 4,
+      "rotation": -0.4,
+      "swing": 1
+    },
+    "stretch": {
+      "x": -32,
+      "y": -32,
+      "rotation": 1.2,
+      "swing": 1
+    },
+    "groom": {
+      "x": -20,
+      "y": 20,
+      "rotation": 0.15,
+      "swing": 0.6
+    },
+    "sit-up": {
+      "x": -16,
+      "y": 26,
+      "rotation": 0.15,
+      "swing": 1
+    },
+    "dangle": {
+      "x": -10,
+      "y": 24,
+      "rotation": -1.5,
+      "swing": 1.4,
+      "drawn": true
+    }
+  },
+  "sitOverlay": {
+    "ear-near": [
+      22,
+      -38
+    ],
+    "ear-far": [
+      24,
+      -40
+    ],
+    "eyes-open": [
+      32,
+      -32
+    ],
+    "eyes-closed": [
+      32,
+      -32
+    ]
+  },
+  "headTop": {
+    "puppet": {
+      "x": 34,
+      "y": -40
+    },
+    "sit": {
+      "x": 19,
+      "y": -44
+    },
+    "sleep-curl": {
+      "x": 38,
+      "y": -18
+    }
+  },
+  "earTurn": -0.5
+}

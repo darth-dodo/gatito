@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/darth-dodo/windowsill/actions/workflows/ci.yml/badge.svg)](https://github.com/darth-dodo/windowsill/actions/workflows/ci.yml)
 
-> Little cats, and soon dogs, that live on your Mac's desktop. Pet them, teach them tricks, and let them nap on your windows while you work.
+> Little cats and dogs that live on your Mac's desktop. Pet them, teach them tricks, and let them nap on your windows while you work.
 
 [![Tauri 2](https://img.shields.io/badge/Tauri-2-24C8DB?logo=tauri&logoColor=white)](https://v2.tauri.app)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
@@ -12,9 +12,9 @@
 
 ![Windowsill: pixel cats and a dog on a Mac desktop, one cat perched on a code window, one napping above the Dock, one being petted, and a golden dog wagging](docs/assets/windowsill-hero.svg)
 
-![Recorded demo: four pixel cats, orange tabby, black, white and grey, wandering, sitting, stretching and curling up for naps on the floor above a pretend Dock while the cursor drifts past them](docs/assets/demo.gif)
+![Recorded demo: four pixel cats (orange tabby, black, white and grey) and two dogs (a golden and a brown retriever) sitting, play bowing, wandering and napping on the floor above a pretend Dock while the cursor drifts past them; the dogs nap lying down with their chin on their paws](docs/assets/demo.gif)
 
-Run the demo locally: `npm run dev` then open `/demo.html`.
+Full-quality video: [docs/assets/demo.mp4](docs/assets/demo.mp4). Run the demo locally: `npm run dev` then open `/demo.html`.
 
 ---
 
@@ -29,7 +29,7 @@ Each **pet** has a name, a look, a personality and a mood. It naps above your Do
 ## What it feels like
 
 ### 🐾 Make a pet
-Pick a **species** (cats first, dogs in Phase 2), a **name**, a **style** (pixel first; soft and cute, ink doodle and silhouette later), a **coat** (cats: orange tabby, black, white, grey, tuxedo, calico, Siamese; dogs: golden, black, white, brown, spotted, tricolour, husky grey) and a **personality**: Cosy, Curious, Mischievous or Social. It drops in from the top of the screen and lands on its feet.
+Pick a **species** (cat or dog), a **name**, a **style** (pixel first; soft and cute, ink doodle and silhouette later), a **coat** (cats: orange tabby, black, white, grey, tuxedo, calico, Siamese; dogs: golden, black, white, brown, spotted, tricolour, husky grey) and a **personality**: Cosy, Curious, Mischievous or Social. It drops in from the top of the screen and lands on its feet.
 
 ### 💤 It lives alongside you
 Mostly calm: napping, loafing, stretching awake, wandering a little. Curious cats explore, cosy ones curl up near your cursor when you step away.

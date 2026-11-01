@@ -2,7 +2,7 @@ import { newPairings } from '../brain/learning';
 import { validateName } from '../brain/names';
 import type { SaveFile } from '../brain/save';
 import { TUNING } from '../brain/tuning';
-import { COLOURS, type Colour, type Personality, type Pet, type Species, type Style } from '../brain/types';
+import { COATS, type Colour, type Personality, type Pet, type Species, type Style } from '../brain/types';
 
 export interface Option<T extends string> {
   value: T;
@@ -14,7 +14,7 @@ export interface Option<T extends string> {
 
 export const SPECIES_OPTIONS: readonly Option<Species>[] = [
   { value: 'cat', label: 'Cat', enabled: true },
-  { value: 'dog', label: 'Dog', enabled: false, note: 'coming in Phase 2' },
+  { value: 'dog', label: 'Dog', enabled: true },
 ];
 
 export const STYLE_OPTIONS: readonly Option<Style>[] = [
@@ -39,18 +39,29 @@ const COLOUR_LABELS: Record<Colour, string> = {
   tuxedo: 'Tuxedo',
   calico: 'Calico',
   siamese: 'Siamese',
+  golden: 'Golden',
+  brown: 'Brown',
+  spotted: 'Spotted',
+  tricolour: 'Tricolour',
+  'husky-grey': 'Husky grey',
 };
 
-/** Every coat, enabled only where its sprite sheet exists. */
-export function colourOptions(hasArt: (c: Colour) => boolean): Option<Colour>[] {
-  return COLOURS.map((value) =>
+/** Every coat of the species, enabled only where its sprite sheet exists. */
+export function colourOptions(species: Species, hasArt: (c: Colour) => boolean): Option<Colour>[] {
+  return COATS[species].map((value) =>
     hasArt(value)
       ? { value, label: COLOUR_LABELS[value], enabled: true }
       : { value, label: COLOUR_LABELS[value], enabled: false, note: 'art coming' },
   );
 }
 
-export const LIMIT_NOTE = `${TUNING.maxCats} cats is the limit`;
+/** Keeps the current coat if it is on offer (black and white are both species' coats), else the first that is. */
+export function pickColour(options: readonly Option<Colour>[], current: Colour | null): Colour | null {
+  if (current !== null && options.some((o) => o.value === current && o.enabled)) return current;
+  return options.find((o) => o.enabled)?.value ?? null;
+}
+
+export const LIMIT_NOTE = `${TUNING.maxCats} pets is the limit`;
 
 const NAME_ERRORS = {
   empty: 'Every pet needs a name',
@@ -87,6 +98,7 @@ export function formState(input: {
 }
 
 export interface NewPetFields {
+  species: Species;
   name: string;
   colour: Colour;
   style: Style;
@@ -95,11 +107,11 @@ export interface NewPetFields {
 
 export type EditFields = Pick<Pet, 'name' | 'colour' | 'style'>;
 
-/** A newborn cat: affection 60, energy 80, nothing learned yet. */
+/** A newborn pet: affection 60, energy 80, nothing learned yet. */
 export function newPet(f: NewPetFields, id: string): Pet {
   return {
     id,
-    species: 'cat',
+    species: f.species,
     name: f.name,
     style: f.style,
     colour: f.colour,

@@ -5,6 +5,7 @@ import type { Pet } from '../../src/brain/types';
 import {
   LIMIT_NOTE,
   colourOptions,
+  pickColour,
   formState,
   newPet,
   PERSONALITY_OPTIONS,
@@ -44,8 +45,8 @@ describe('formState', () => {
   it('the seventh cat cannot be created', () => {
     const s = formState({ pets: six, editing: null, name: 'Mochi' });
     expect(s.canSubmit).toBe(false);
-    expect(s.limitNote).toBe('6 cats is the limit');
-    expect(LIMIT_NOTE).toBe('6 cats is the limit');
+    expect(s.limitNote).toBe('6 pets is the limit');
+    expect(LIMIT_NOTE).toBe('6 pets is the limit');
   });
 
   it('editing at the limit is still allowed', () => {
@@ -78,9 +79,8 @@ describe('formState', () => {
 });
 
 describe('options', () => {
-  it('only Cat is enabled; Dog is coming in Phase 2', () => {
-    expect(SPECIES_OPTIONS.filter((o) => o.enabled).map((o) => o.value)).toEqual(['cat']);
-    expect(SPECIES_OPTIONS.find((o) => o.value === 'dog')?.note).toBe('coming in Phase 2');
+  it('offers Cat and Dog', () => {
+    expect(SPECIES_OPTIONS.filter((o) => o.enabled).map((o) => o.label)).toEqual(['Cat', 'Dog']);
   });
 
   it('only Pixel is enabled; other styles are coming soon', () => {
@@ -89,10 +89,25 @@ describe('options', () => {
   });
 
   it('offers only coats whose sprite sheet exists', () => {
-    const opts = colourOptions((c) => c === 'black' || c === 'grey');
+    const opts = colourOptions('cat', (c) => c === 'black' || c === 'grey');
     expect(opts.filter((o) => o.enabled).map((o) => o.value)).toEqual(['black', 'grey']);
     expect(opts.find((o) => o.value === 'siamese')).toMatchObject({ enabled: false, note: 'art coming' });
     expect(opts.find((o) => o.value === 'orange-tabby')?.label).toBe('Orange tabby');
+  });
+
+  it('lists each species its own coats', () => {
+    const dog = colourOptions('dog', () => true);
+    expect(dog.map((o) => o.label)).toEqual(['Golden', 'Black', 'White', 'Brown', 'Spotted', 'Tricolour', 'Husky grey']);
+    expect(colourOptions('cat', () => true).map((o) => o.value)).not.toContain('golden');
+  });
+
+  it('keeps a coat both species share when switching species, else picks the first with art', () => {
+    const dog = colourOptions('dog', (c) => c !== 'spotted');
+    expect(pickColour(dog, 'black')).toBe('black');
+    expect(pickColour(dog, 'orange-tabby')).toBe('golden');
+    expect(pickColour(dog, 'spotted')).toBe('golden');
+    expect(pickColour(dog, null)).toBe('golden');
+    expect(pickColour(colourOptions('dog', () => false), 'black')).toBeNull();
   });
 
   it('lists the four personalities', () => {
@@ -101,8 +116,14 @@ describe('options', () => {
 });
 
 describe('save edits', () => {
+  it('a new dog is a dog', () => {
+    const p = newPet({ species: 'dog', name: 'Biscuit', colour: 'golden', style: 'pixel', personality: 'cosy' }, 'id-2');
+    expect(p.species).toBe('dog');
+    expect(p.colour).toBe('golden');
+  });
+
   it('a new pet starts at affection 60, energy 80, fresh pairings, nothing learned', () => {
-    const p = newPet({ name: 'Mochi', colour: 'grey', style: 'pixel', personality: 'social' }, 'id-1');
+    const p = newPet({ species: 'cat', name: 'Mochi', colour: 'grey', style: 'pixel', personality: 'social' }, 'id-1');
     expect(p).toEqual({
       id: 'id-1',
       species: 'cat',

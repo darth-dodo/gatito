@@ -43,6 +43,18 @@ describe('save file', () => {
     if (r.ok) expect(serialise(r.save)).toBe(serialise(s));
   });
 
+  it('round trips cats and dogs together, with coats both species share', () => {
+    const s = save([
+      pet('a'),
+      pet('b', { species: 'dog', colour: 'golden' }),
+      pet('c', { species: 'dog', colour: 'black', personality: 'social' }),
+      pet('d', { species: 'dog', colour: 'husky-grey', learned: {} }),
+    ]);
+    const r = parseSave(serialise(s));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.save).toEqual(s);
+  });
+
   it('accepts an empty pet list', () => {
     expect(parseSave(serialise(save([]))).ok).toBe(true);
   });
@@ -71,7 +83,9 @@ describe('save file', () => {
     ['unknown colour', (p: Record<string, any>) => (p.colour = 'purple')],
     ['unknown style', (p: Record<string, any>) => (p.style = 'neon')],
     ['unknown personality', (p: Record<string, any>) => (p.personality = 'grumpy')],
-    ['dog species', (p: Record<string, any>) => (p.species = 'dog')],
+    ['unknown species', (p: Record<string, any>) => (p.species = 'rabbit')],
+    ['a dog in a cat-only coat', (p: Record<string, any>) => (p.species = 'dog')],
+    ['a cat in a dog-only coat', (p: Record<string, any>) => (p.colour = 'golden')],
     ['missing id', (p: Record<string, any>) => delete p.id],
     ['numeric id', (p: Record<string, any>) => (p.id = 5)],
     ['missing name', (p: Record<string, any>) => delete p.name],
@@ -102,6 +116,7 @@ describe('save file', () => {
   it('gives a reason string', () => {
     expect(reason('{')).toMatch(/json/i);
     expect(reason(mutated((p) => (p.colour = 'purple')))).toMatch(/colour/);
+    expect(reason(mutated((p) => (p.species = 'dog')))).toBe('unknown colour for a dog');
   });
 });
 

@@ -1,0 +1,211 @@
+{
+  "note": "How scripts/art/cut-parts.ts cuts the golden dog's puppet parts out of reference.png (see the cat's cut.json for the fields). The near ear stays on the body too, so a swinging ear never shows a hole behind it. The far ear is hidden behind the head, so it is a patch inside the head, kept on the body and drawn behind it: it never shows.",
+  "parts": {
+    "tail": {
+      "mask": "generated",
+      "grow": 1,
+      "dilate": 1,
+      "clip": [
+        [
+          0,
+          38
+        ],
+        [
+          25,
+          38
+        ],
+        [
+          25,
+          66
+        ],
+        [
+          0,
+          66
+        ]
+      ]
+    },
+    "head": {
+      "mask": "generated",
+      "keepOnBody": true
+    },
+    "ear-near": {
+      "polygon": [
+        [
+          71,
+          19
+        ],
+        [
+          77.9,
+          19
+        ],
+        [
+          77.9,
+          32
+        ],
+        [
+          76,
+          33.9
+        ],
+        [
+          71,
+          33.9
+        ],
+        [
+          69,
+          31
+        ],
+        [
+          69,
+          22
+        ]
+      ],
+      "keepOnBody": true
+    },
+    "ear-far": {
+      "polygon": [
+        [
+          72,
+          24
+        ],
+        [
+          77,
+          24
+        ],
+        [
+          77,
+          30
+        ],
+        [
+          72,
+          30
+        ]
+      ],
+      "keepOnBody": true
+    },
+    "eyes-open": {
+      "polygon": [
+        [
+          81,
+          23
+        ],
+        [
+          86,
+          23
+        ],
+        [
+          86,
+          28
+        ],
+        [
+          81,
+          28
+        ]
+      ],
+      "keepOnBody": true
+    },
+    "leg-back-near": {
+      "polygon": [
+        [
+          20,
+          50
+        ],
+        [
+          33.9,
+          50
+        ],
+        [
+          33.9,
+          96
+        ],
+        [
+          20,
+          96
+        ]
+      ],
+      "line": 62,
+      "overlap": 4
+    },
+    "leg-back-far": {
+      "polygon": [
+        [
+          33.9,
+          50
+        ],
+        [
+          50,
+          50
+        ],
+        [
+          50,
+          96
+        ],
+        [
+          33.9,
+          96
+        ]
+      ],
+      "line": 62,
+      "overlap": 4
+    },
+    "leg-front-near": {
+      "polygon": [
+        [
+          58,
+          50
+        ],
+        [
+          70.9,
+          50
+        ],
+        [
+          70.9,
+          79.9
+        ],
+        [
+          73.9,
+          79.9
+        ],
+        [
+          73.9,
+          96
+        ],
+        [
+          58,
+          96
+        ]
+      ],
+      "line": 62,
+      "overlap": 4
+    },
+    "leg-front-far": {
+      "polygon": [
+        [
+          70.9,
+          50
+        ],
+        [
+          86,
+          50
+        ],
+        [
+          86,
+          96
+        ],
+        [
+          73.9,
+          96
+        ],
+        [
+          73.9,
+          79.9
+        ],
+        [
+          70.9,
+          79.9
+        ]
+      ],
+      "line": 62,
+      "overlap": 4
+    }
+  }
+}
