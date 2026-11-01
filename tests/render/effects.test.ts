@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_HEARTS, risingHearts } from '../../src/render/effects';
+import { HEART_BURST_SECONDS, MAX_HEARTS, heartBurst, risingHearts } from '../../src/render/effects';
 
 describe('risingHearts', () => {
   it('shows nothing before purring starts', () => {
@@ -28,5 +28,25 @@ describe('risingHearts', () => {
   it('staggers hearts so more appear as the purr goes on', () => {
     expect(risingHearts(0).length).toBe(1);
     expect(risingHearts(2).length).toBeGreaterThan(1);
+  });
+});
+
+describe('heartBurst', () => {
+  it('is empty before and after the burst', () => {
+    expect(heartBurst(-0.01)).toEqual([]);
+    expect(heartBurst(HEART_BURST_SECONDS)).toEqual([]);
+    expect(heartBurst(Infinity)).toEqual([]);
+  });
+
+  it('shows a few hearts that rise and fade out', () => {
+    const early = heartBurst(0.1 * HEART_BURST_SECONDS);
+    const late = heartBurst(0.9 * HEART_BURST_SECONDS);
+    expect(early.length).toBe(3);
+    expect(late[0]!.y).toBeLessThan(early[0]!.y);
+    expect(late[0]!.alpha).toBeLessThan(early[0]!.alpha);
+    for (const h of [...early, ...late]) {
+      expect(h.alpha).toBeGreaterThanOrEqual(0);
+      expect(h.alpha).toBeLessThanOrEqual(1);
+    }
   });
 });

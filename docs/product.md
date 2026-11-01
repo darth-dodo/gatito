@@ -195,6 +195,8 @@ Every behaviour has a short transition so a cat never snaps between poses.
 
 **Petting.** Moving the cursor back and forth across a cat, no click needed, counts as strokes. Three strokes within 2 seconds *(tunable)* start **Purr**: the cat leans in, eyes close, small hearts rise, and affection goes up. Keep stroking for **Belly up**, where a happy cat rolls onto its back.
 
+**Tap to pet.** A click on a cat that does not lift it (it moved less than 4 px *(tunable)*) is a tap: it counts as one stroke and a few small hearts pop up. Three taps within 2 seconds *(tunable)* start **Purr**; taps and strokes add up toward the same purr.
+
 **Pick up.** Press and hold on a cat to pick it up by the scruff; it dangles with its legs swaying. **Drop**: release and it falls under gravity, rights itself mid-air and lands on its feet. Dropping does not lower mood.
 
 **Cue menu.** Right-click a cat to open the cue ring (see [Tricks](#tricks)).

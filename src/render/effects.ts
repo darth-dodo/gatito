@@ -62,3 +62,25 @@ export function risingHearts(t: number): Heart[] {
   }
   return out;
 }
+
+/** How long the small burst after a tap lasts. */
+export const HEART_BURST_SECONDS = 0.8;
+const BURST_HEARTS = 3;
+const BURST_SPREAD_PX = 9;
+const BURST_RISE_PX = 18;
+
+/** Pure: the few hearts that pop up and fade after a tap, `age` seconds ago. Empty once it is over. */
+export function heartBurst(age: number): Heart[] {
+  if (age < 0 || age >= HEART_BURST_SECONDS) return [];
+  const p = age / HEART_BURST_SECONDS;
+  const out: Heart[] = [];
+  for (let i = 0; i < BURST_HEARTS; i++) {
+    const side = i - (BURST_HEARTS - 1) / 2;
+    out.push({
+      x: HEART_ORIGIN.x + side * BURST_SPREAD_PX * (0.4 + 0.6 * p),
+      y: HEART_ORIGIN.y - BURST_RISE_PX * p - (side === 0 ? 4 : 0),
+      alpha: p < 0.1 ? p / 0.1 : 1 - (p - 0.1) / 0.9,
+    });
+  }
+  return out;
+}

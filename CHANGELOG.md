@@ -24,10 +24,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Pet art generator (`npm run art:generate`, OpenRouter image model) and the first orange tabby set: reference cat, 12 puppet parts and 8 key poses in `art/source/cat/orange-tabby/`.
 - Browser demo page (`demo.html`) that runs the real pets on a pretend Mac desktop, with `?speed=` and `?seed=` options, and `npm run demo:record`, which films it into `docs/assets/demo.mp4` and `docs/assets/demo.gif` for the README.
 - Petting and handling: stroke a pet with the cursor and it purrs with rising hearts, keep going on a happy pet and it rolls belly up, drag it at least 4 px to lift it by the scruff, release and it falls and lands on its feet; a lost mouse-up can never leave a pet stuck held ([#17](https://github.com/darth-dodo/windowsill/pull/17)).
+- Tap a pet to pet it; three quick taps start a purr.
 
 ### Changed
 
 - Pet art uses a 96 by 96 grid shown at 1x instead of 48 by 48 at 2x, so generated art keeps its detail at the same size on screen; the `sit` pose is drawn without ears and eyes, which are layered on ([#14](https://github.com/darth-dodo/windowsill/pull/14)).
 - CI runs the app build in parallel and as a fast debug compile on pull requests; the full release bundle runs on main.
+
+### Fixed
+
+- Petting works in the real app: strokes are read from the system cursor because macOS does not send mouse moves to the unfocused overlay.
 
 [Unreleased]: https://github.com/darth-dodo/windowsill/commits/main

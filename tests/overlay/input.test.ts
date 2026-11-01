@@ -47,6 +47,7 @@ interface Setup {
   pets: { body: Body; controller: PetController }[];
   router: InputRouter;
   onCueRequest: ReturnType<typeof vi.fn>;
+  onTap: ReturnType<typeof vi.fn>;
 }
 
 function setup(cats: { id: string; x: number; mood?: Mood }[]): Setup {
@@ -57,17 +58,18 @@ function setup(cats: { id: string; x: number; mood?: Mood }[]): Setup {
     return { body: b, controller: new PetController(pet(c.id, c.mood ?? { affection: 60, energy: 60 }), b, seededRng(i + 1)) };
   });
   const onCueRequest = vi.fn();
-  const router = new InputRouter({ pets, world, onCueRequest });
-  return { world, pets, router, onCueRequest };
+  const onTap = vi.fn();
+  const router = new InputRouter({ pets, world, onCueRequest, onTap });
+  return { world, pets, router, onCueRequest, onTap };
 }
 
 /** Sweeps back and forth across a cat at x 400..484: one stroke per sweep, starting at time t0. */
 function stroke(router: InputRouter, sweeps: number, t0: number, step = 0.25): number {
   let t = t0;
-  router.pointerMove(420, 760, t, 0);
+  router.cursorMove(420, 760, t);
   for (let i = 0; i < sweeps; i++) {
     t += step;
-    router.pointerMove(i % 2 === 0 ? 450 : 420, 760, t, 0);
+    router.cursorMove(i % 2 === 0 ? 450 : 420, 760, t);
   }
   return t;
 }
@@ -110,7 +112,7 @@ describe('InputRouter petting', () => {
   it('resets the stroke count when the cursor leaves the cat', () => {
     const { router, pets } = setup([{ id: 'mochi', x: 400 }]);
     const t = stroke(router, 2, 0);
-    router.pointerMove(700, 760, t + 0.05, 0);
+    router.cursorMove(700, 760, t + 0.05);
     stroke(router, 1, t + 0.1);
     expect(pets[0]!.controller.anim().name).not.toBe('purr');
   });
@@ -129,12 +131,104 @@ describe('InputRouter petting', () => {
       { id: 'b', x: 600 },
     ]);
     let t = stroke(router, 2, 0);
-    router.pointerMove(640, 760, t + 0.05, 0);
-    router.pointerMove(670, 760, t + 0.1, 0);
+    router.cursorMove(640, 760, t + 0.05);
+    router.cursorMove(670, 760, t + 0.1);
     t += 0.15;
     stroke(router, 1, t);
     expect(pets[0]!.controller.anim().name).not.toBe('purr');
     expect(pets[1]!.controller.anim().name).not.toBe('purr');
+  });
+});
+
+describe('InputRouter strokes come only from the host cursor', () => {
+  it('pointer moves without a button never stroke', () => {
+    const { router, pets } = setup([{ id: 'mochi', x: 400 }]);
+    for (let i = 0; i < 6; i++) router.pointerMove(i % 2 ? 420 : 450, 760, 0);
+    expect(pets[0]!.controller.pet.mood.affection).toBe(60);
+    expect(pets[0]!.controller.anim().name).not.toBe('purr');
+  });
+
+  it('ignores the cursor during a press, and does not count the jump after it', () => {
+    const { router, pets } = setup([{ id: 'mochi', x: 400 }]);
+    router.cursorMove(420, 760, 0);
+    router.pointerDown(420, 760, 0);
+    router.cursorMove(470, 760, 0.1);
+    router.cursorMove(420, 760, 0.2);
+    router.release();
+    router.cursorMove(470, 760, 0.3);
+    expect(pets[0]!.controller.pet.mood.affection).toBe(60);
+  });
+});
+
+/** Taps (press and release in place) on the cat at x 400..484, `gap` seconds apart from t0. */
+function tap(router: InputRouter, taps: number, t0: number, gap = 0.3): number {
+  let t = t0;
+  for (let i = 0; i < taps; i++) {
+    t += gap;
+    router.pointerDown(440, 760, 0);
+    router.pointerMove(441, 760, 1);
+    router.pointerUp(441, 760, t);
+  }
+  return t;
+}
+
+describe('InputRouter tap to pet', () => {
+  it('one tap raises affection by one stroke, asks for a heart burst and does not pick up', () => {
+    const { router, pets, world, onTap } = setup([{ id: 'mochi', x: 400 }]);
+    const pickUp = vi.spyOn(world, 'pickUp');
+    tap(router, 1, 0);
+    expect(pets[0]!.controller.pet.mood.affection).toBe(60 + TUNING.affectionPerStroke);
+    expect(onTap).toHaveBeenCalledWith('mochi');
+    expect(pickUp).not.toHaveBeenCalled();
+    expect(router.heldId()).toBeNull();
+    expect(pets[0]!.controller.anim().name).not.toBe('purr');
+  });
+
+  it(`${TUNING.tapsForPurr} quick taps start a purr`, () => {
+    const { router, pets } = setup([{ id: 'mochi', x: 400 }]);
+    expect(TUNING.tapsForPurr).toBe(3);
+    tap(router, 2, 0);
+    expect(pets[0]!.controller.anim().name).not.toBe('purr');
+    tap(router, 1, 0.6);
+    expect(pets[0]!.controller.anim().name).toBe('purr');
+    expect(pets[0]!.controller.pet.mood.affection).toBe(60 + 3 * TUNING.affectionPerStroke);
+  });
+
+  it('slow taps spread past the stroke window do not purr', () => {
+    const { router, pets } = setup([{ id: 'mochi', x: 400 }]);
+    tap(router, 3, 0, TUNING.strokeWindowSeconds);
+    expect(pets[0]!.controller.anim().name).not.toBe('purr');
+  });
+
+  it('taps and strokes add up to the same purr', () => {
+    const { router, pets } = setup([{ id: 'mochi', x: 400 }]);
+    const t = stroke(router, 2, 0);
+    tap(router, 1, t, 0.1);
+    expect(pets[0]!.controller.anim().name).toBe('purr');
+  });
+
+  it('a drag is not a tap', () => {
+    const { router, pets, onTap } = setup([{ id: 'mochi', x: 400 }]);
+    router.pointerDown(440, 760, 0);
+    router.pointerMove(500, 600, 1);
+    router.pointerUp(500, 600, 0.5);
+    expect(onTap).not.toHaveBeenCalled();
+    expect(pets[0]!.controller.pet.mood.affection).toBe(60);
+  });
+
+  it('a press released far away without any move is not a tap', () => {
+    const { router, onTap } = setup([{ id: 'mochi', x: 400 }]);
+    router.pointerDown(440, 760, 0);
+    router.pointerUp(440 + TUNING.dragStartPx, 760, 0.5);
+    expect(onTap).not.toHaveBeenCalled();
+  });
+
+  it('a cancelled press (release without pointerUp) is not a tap', () => {
+    const { router, onTap } = setup([{ id: 'mochi', x: 400 }]);
+    router.pointerDown(440, 760, 0);
+    router.release();
+    router.pointerUp(440, 760, 0.5);
+    expect(onTap).not.toHaveBeenCalled();
   });
 });
 
@@ -175,7 +269,7 @@ describe('InputRouter pick up and drop', () => {
     const { body: b, controller: c } = pets[0]!;
 
     router.pointerDown(410, 730, 0);
-    router.pointerMove(510, 530, 0.1, 1);
+    router.pointerMove(510, 530, 1);
 
     expect(pickUp).toHaveBeenCalledWith('mochi', 400, 720);
     expect(dragTo).toHaveBeenCalledWith('mochi', 500, 520);
@@ -197,9 +291,9 @@ describe('InputRouter pick up and drop', () => {
     const ctx = { cursor: null, userIdleSeconds: 0, floor };
 
     router.pointerDown(410, 730, 0);
-    router.pointerMove(510, 330, 0.1, 1);
+    router.pointerMove(510, 330, 1);
     c.update(FRAME, ctx);
-    router.pointerUp(510, 330);
+    router.pointerUp(510, 330, 1);
     expect(drop).toHaveBeenCalledWith('mochi');
     expect(router.heldId()).toBeNull();
 
@@ -219,9 +313,13 @@ describe('InputRouter pick up and drop', () => {
   it('counts no strokes while holding a cat', () => {
     const { router, pets } = setup([{ id: 'mochi', x: 400 }]);
     router.pointerDown(420, 760, 0);
-    router.pointerMove(430, 760, 0, 1);
+    router.pointerMove(430, 760, 1);
     expect(router.heldId()).toBe('mochi');
-    for (let i = 0; i < 4; i++) router.pointerMove(i % 2 ? 300 : 500, 500, i * 0.2, 1);
+    for (let i = 0; i < 4; i++) {
+      const x = i % 2 ? 300 : 500;
+      router.pointerMove(x, 500, 1);
+      router.cursorMove(x, 500, i * 0.2);
+    }
     expect(pets[0]!.controller.pet.mood.affection).toBe(60);
   });
 
@@ -232,8 +330,8 @@ describe('InputRouter pick up and drop', () => {
     const c = pets[0]!.controller;
     const before = c.anim().name;
     router.pointerDown(420, 760, 0);
-    router.pointerMove(422, 761, 0.05, 1);
-    router.pointerUp(422, 761);
+    router.pointerMove(422, 761, 1);
+    router.pointerUp(422, 761, 1);
     c.update(FRAME, { cursor: null, userIdleSeconds: 0, floor });
     expect(pickUp).not.toHaveBeenCalled();
     expect(drop).not.toHaveBeenCalled();
@@ -248,9 +346,9 @@ describe('InputRouter pick up and drop', () => {
     const pickUp = vi.spyOn(world, 'pickUp');
     expect(TUNING.dragStartPx).toBe(4);
     router.pointerDown(420, 760, 0);
-    router.pointerMove(423, 760, 0.02, 1);
+    router.pointerMove(423, 760, 1);
     expect(pickUp).not.toHaveBeenCalled();
-    router.pointerMove(424, 760, 0.04, 1);
+    router.pointerMove(424, 760, 1);
     expect(pickUp).toHaveBeenCalledWith('mochi', 400, 720);
     expect(router.heldId()).toBe('mochi');
   });
@@ -260,33 +358,33 @@ describe('InputRouter pick up and drop', () => {
     const b = pets[0]!.body;
     const results: (string | undefined)[] = [];
     router.pointerDown(420, 760, 0);
-    results.push(router.pointerMove(422, 760, 0.01, 1));
-    results.push(router.pointerMove(430, 760, 0.02, 1));
-    results.push(router.pointerMove(480, 600, 0.03, 1));
-    results.push(router.pointerMove(500, 500, 0.04, 1));
+    results.push(router.pointerMove(422, 760, 1));
+    results.push(router.pointerMove(430, 760, 1));
+    results.push(router.pointerMove(480, 600, 1));
+    results.push(router.pointerMove(500, 500, 1));
     expect(results.filter((r) => r === 'lifted')).toHaveLength(1);
     expect(results[1]).toBe('lifted');
-    router.pointerUp(500, 500);
+    router.pointerUp(500, 500, 1);
 
     router.pointerDown(b.x + 10, b.y + 10, 0);
-    expect(router.pointerMove(b.x + 30, b.y + 10, 0.1, 1)).toBe('lifted');
-    expect(router.pointerMove(b.x + 40, b.y + 10, 0.11, 1)).toBeUndefined();
+    expect(router.pointerMove(b.x + 30, b.y + 10, 1)).toBe('lifted');
+    expect(router.pointerMove(b.x + 40, b.y + 10, 1)).toBeUndefined();
   });
 
   it("a plain click and plain strokes never report 'lifted'", () => {
     const { router } = setup([{ id: 'mochi', x: 400 }]);
     router.pointerDown(420, 760, 0);
-    expect(router.pointerMove(421, 760, 0.01, 1)).toBeUndefined();
-    router.pointerUp(421, 760);
-    expect(router.pointerMove(450, 760, 0.1, 0)).toBeUndefined();
+    expect(router.pointerMove(421, 760, 1)).toBeUndefined();
+    router.pointerUp(421, 760, 1);
+    expect(router.pointerMove(450, 760, 0)).toBeUndefined();
   });
 
   it('releases a held cat when a move arrives with the left button up', () => {
     const { router, world } = setup([{ id: 'mochi', x: 400 }]);
     const drop = vi.spyOn(world, 'drop');
     router.pointerDown(420, 760, 0);
-    router.pointerMove(520, 500, 0.1, 1);
-    router.pointerMove(530, 500, 0.2, 0);
+    router.pointerMove(520, 500, 1);
+    router.pointerMove(530, 500, 0);
     expect(drop).toHaveBeenCalledWith('mochi');
     expect(router.heldId()).toBeNull();
   });
@@ -295,7 +393,7 @@ describe('InputRouter pick up and drop', () => {
     const { router, world } = setup([{ id: 'mochi', x: 400 }]);
     const drop = vi.spyOn(world, 'drop');
     router.pointerDown(420, 760, 0);
-    router.pointerMove(520, 500, 0.1, 1);
+    router.pointerMove(520, 500, 1);
     router.pointerDown(520, 500, 0);
     expect(drop).toHaveBeenCalledWith('mochi');
     expect(router.heldId()).toBeNull();
@@ -317,7 +415,7 @@ describe('InputRouter pick up and drop', () => {
       { id: 'over', x: 440 },
     ]);
     router.pointerDown(460, 760, 0);
-    router.pointerMove(470, 760, 0.05, 1);
+    router.pointerMove(470, 760, 1);
     expect(router.heldId()).toBe('over');
   });
 
