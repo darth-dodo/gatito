@@ -100,11 +100,14 @@ const TAIL_SWING = 0.25;
 const BLINK_GAPS = [3.1, 4.3, 2.4, 5.0] as const;
 const BLINK_SECONDS = 0.15;
 
-// Walking legs.
+// Walking legs: the cut-out lower legs swing at most about 12 degrees about the hip and shoulder.
 const WALK_STEP_HZ = 2;
 const ZOOMIES_STEP_HZ = 4.5;
-const LEG_SWING = 0.45;
+const LEG_SWING = 0.21;
 const WALK_BOB_PX = 1;
+
+/** Part rotations snap to steps this size (3 degrees), so pixel art turns in clean steps instead of shimmering. */
+export const ROTATION_STEP = Math.PI / 60;
 
 // Breathing, in cell pixels.
 const BREATH_PX = 1;
@@ -119,7 +122,7 @@ const CHASE_TAIL_TURNS = 2;
 const HIGH_FIVE_FROM = 0.2;
 const HIGH_FIVE_TO = 0.8;
 const PURR_LEAN = 0.06;
-const PURR_SHAKE_PX = 0.5;
+const PURR_SHAKE_PX = 1;
 const PURR_SHAKE_HZ = 14;
 const DANGLE_SWAY = 0.12;
 const DANGLE_SWAY_HZ = 0.8;
@@ -140,10 +143,10 @@ const POSE_TAIL: Record<PoseName, { x: number; y: number; rotation: number; swin
 
 /** The sit pose is drawn without ears and eyes; these parts are always layered on it. Other poses keep their own. */
 const SIT_OVERLAY: Partial<Record<PartName, [number, number]>> = {
-  'ear-near': [24, -40],
-  'ear-far': [31, -44],
-  'eyes-open': [33, -37],
-  'eyes-closed': [33, -37],
+  'ear-near': [24, -44],
+  'ear-far': [33, -45],
+  'eyes-open': [34, -37],
+  'eyes-closed': [34, -37],
 };
 
 const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));
@@ -181,9 +184,28 @@ function breath(t: number, seconds: number): number {
   return BREATH_PX * Math.sin((TAU * t) / seconds);
 }
 
+/** Pure: an angle snapped to the nearest multiple of `step`. */
+export function stepAngle(rad: number, step: number = ROTATION_STEP): number {
+  return Math.round(rad / step) * step || 0;
+}
+
+/** Snaps every part to whole pixels and stepped rotations. */
+function settle(frame: RigFrame): RigFrame {
+  for (const p of Object.values(frame.parts)) {
+    p.x = Math.round(p.x);
+    p.y = Math.round(p.y);
+    p.rotation = stepAngle(p.rotation);
+  }
+  return frame;
+}
+
+const isLeg = (p: PartName): boolean => p.startsWith('leg-') || p === 'paw-raised';
+
 function rest(part: PartName): PartPose {
   const [x, y] = RIG[part].offset;
-  return { x, y, rotation: 0, visible: part !== 'eyes-closed' && part !== 'paw-raised' };
+  // The head is part of the body image; its own image is only kept for other rigs.
+  const visible = part !== 'eyes-closed' && part !== 'paw-raised' && part !== 'head';
+  return { x, y, rotation: 0, visible };
 }
 
 function puppet(anim: AnimName, t: number, mood: Mood): RigFrame {
@@ -208,7 +230,7 @@ function puppet(anim: AnimName, t: number, mood: Mood): RigFrame {
     parts['leg-front-far'].rotation = -swing;
     parts['leg-back-near'].rotation = -swing;
     const bob = -WALK_BOB_PX * Math.abs(Math.sin(TAU * hz * t));
-    for (const p of PART_NAMES) if (!p.startsWith('leg-')) parts[p].y += bob;
+    for (const p of PART_NAMES) if (!isLeg(p)) parts[p].y += bob;
   } else if (anim === 'fall') {
     parts['leg-front-near'].rotation = -FALL_LEG_SPREAD;
     parts['leg-front-far'].rotation = -FALL_LEG_SPREAD;
@@ -218,11 +240,11 @@ function puppet(anim: AnimName, t: number, mood: Mood): RigFrame {
     parts['ear-far'].rotation = -EAR_BACK_MAX;
   } else if (anim === 'land') {
     const squash = LAND_SQUASH_PX * (1 - clamp01(t / ANIM_SECONDS.land));
-    for (const p of PART_NAMES) if (!p.startsWith('leg-')) parts[p].y += squash;
+    for (const p of PART_NAMES) if (!isLeg(p)) parts[p].y += squash;
   } else {
+    // The whole cat above the legs breathes together, so the cut-out ears, eyes and tail stay on.
     const b = breath(t, BREATH_SECONDS);
-    parts.body.y += b;
-    parts.head.y += b;
+    for (const p of PART_NAMES) if (!isLeg(p)) parts[p].y += b;
   }
 
   if (anim === 'high-five') {
@@ -245,7 +267,7 @@ function keyPose(pose: PoseName, anim: AnimName, t: number, mood: Mood): RigFram
   const g = crossness(anim, mood);
   const sleeping = anim === 'nap' || anim === 'cuddle-nap';
   const parts: Partial<Record<PartName, PartPose>> = {
-    body: { x: 0, y: breath(t, sleeping ? NAP_BREATH_SECONDS : BREATH_SECONDS), rotation: 0, visible: true },
+    body: { x: 0, y: 0, rotation: 0, visible: true },
   };
   const tail = POSE_TAIL[pose];
   parts.tail = { x: tail.x, y: tail.y, rotation: tail.rotation + tail.swing * tailSwing(t, g), visible: true };
@@ -261,14 +283,17 @@ function keyPose(pose: PoseName, anim: AnimName, t: number, mood: Mood): RigFram
   }
 
   let rotation = 0;
+  // Breathing (and a purr's shake) moves the pose and everything layered on it together.
+  let lift = breath(t, sleeping ? NAP_BREATH_SECONDS : BREATH_SECONDS);
   if (anim === 'purr') {
     rotation = PURR_LEAN;
-    parts.body!.y += PURR_SHAKE_PX * Math.sin(TAU * PURR_SHAKE_HZ * t);
+    lift += PURR_SHAKE_PX * Math.sin(TAU * PURR_SHAKE_HZ * t);
   } else if (anim === 'chase-tail') {
     rotation = TAU * CHASE_TAIL_TURNS * clamp01(t / ANIM_SECONDS['chase-tail']);
   } else if (anim === 'dangle') {
     rotation = DANGLE_SWAY * Math.sin(TAU * DANGLE_SWAY_HZ * t);
   }
+  for (const p of Object.values(parts)) p.y += lift;
   return { pose, parts, flipX: false, rotation };
 }
 
@@ -278,10 +303,10 @@ export function rigPose(anim: AnimName, t: number, mood: Mood): RigFrame {
     const p = clamp01(t / ANIM_SECONDS['roll-over']);
     if (p >= ROLL_BELLY_FROM && p <= ROLL_BELLY_TO) {
       // On its back: the belly-up drawing already shows half a turn.
-      const frame = keyPose('belly-up', anim, t, mood);
+      const frame = settle(keyPose('belly-up', anim, t, mood));
       return { ...frame, rotation: TAU * p - Math.PI };
     }
   }
   const pose = POSE_OF[anim];
-  return pose ? keyPose(pose, anim, t, mood) : puppet(anim, t, mood);
+  return settle(pose ? keyPose(pose, anim, t, mood) : puppet(anim, t, mood));
 }

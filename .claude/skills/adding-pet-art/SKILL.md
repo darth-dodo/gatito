@@ -23,7 +23,7 @@ Requirements: pixel art, side view **facing right**, on a flat magenta `#FF00FF`
 ## Steps
 
 1. Branch from `main` (`feat/art-<species>-<coat>`).
-2. Copy and rename the owner's files into the folder above. Check `ls | wc -l` gives 20 and that no names are misspelled.
+2. Copy and rename the owner's files into the folder above. Check that all 20 names are there and none are misspelled. For a coat with a `reference.png` and `cut.json`, put generated parts in `generated/` and run `npm run art:cut` to cut the standing parts from the reference (seamless puppet); the build ignores `generated/`.
 3. Run `npm run art` (no `--placeholders`). If it exits 1, it lists missing or wrong-size files. Report those to the owner by name; never hand-edit their pixels.
 4. Coats: orange tabby is generated once, and **black, white and grey are recoloured from it automatically**. **Tuxedo, calico and Siamese** have patterns, so each needs its own 20 files. A coat appears in **New pet** only once its sprite sheet exists.
 5. Commit the sources (`art/source/...`) **and** the generated sheets (`src/assets/atlas/<species>-<coat>.png` and `.json`), because CI does not run the art step with real art. If a part pivots wrongly (for example the tail swings from its middle), adjust `art/rig/<species>.json`, not the image.

@@ -1,6 +1,6 @@
 {
   "cell": 96,
-  "note": "Parts are drawn in place in the assembled standing cat. anchor is the pivot in 0..1 cell coordinates. offset is the pivot position in cell pixels relative to the body pivot. z is draw order, low first.",
+  "note": "Parts are drawn in place in the assembled standing cat (cut from reference.png by scripts/art/cut-parts.ts). anchor is the pivot in 0..1 cell coordinates. offset is the pivot position in cell pixels relative to the body pivot. z is draw order, low first.",
   "parts": {
     "body": {
       "anchor": [
@@ -26,29 +26,29 @@
     },
     "ear-near": {
       "anchor": [
-        0.7917,
-        0.2813
+        0.791667,
+        0.229167
       ],
       "z": 6,
       "offset": [
         32,
-        -29
+        -34
       ]
     },
     "ear-far": {
       "anchor": [
-        0.8646,
-        0.2396
+        0.885417,
+        0.229167
       ],
       "z": 3,
       "offset": [
-        39,
-        -33
+        41,
+        -34
       ]
     },
     "eyes-open": {
       "anchor": [
-        0.8854,
+        0.885417,
         0.3125
       ],
       "z": 7,
@@ -59,7 +59,7 @@
     },
     "eyes-closed": {
       "anchor": [
-        0.8854,
+        0.885417,
         0.3125
       ],
       "z": 7,
@@ -71,56 +71,56 @@
     "tail": {
       "anchor": [
         0.25,
-        0.4167
+        0.4375
       ],
       "z": 0,
       "offset": [
         -20,
-        -16
+        -14
       ]
     },
     "leg-front-near": {
       "anchor": [
-        0.7083,
-        0.5417
+        0.6875,
+        0.645833
       ],
       "z": 9,
       "offset": [
-        24,
-        -4
+        22,
+        6
       ]
     },
     "leg-front-far": {
       "anchor": [
-        0.7083,
-        0.5208
+        0.78125,
+        0.645833
       ],
       "z": 2,
       "offset": [
-        24,
-        -6
+        31,
+        6
       ]
     },
     "leg-back-near": {
       "anchor": [
-        0.3333,
-        0.5417
+        0.322917,
+        0.645833
       ],
       "z": 8,
       "offset": [
-        -12,
-        -4
+        -13,
+        6
       ]
     },
     "leg-back-far": {
       "anchor": [
-        0.3229,
-        0.5417
+        0.4375,
+        0.65625
       ],
       "z": 1,
       "offset": [
-        -13,
-        -4
+        -2,
+        7
       ]
     },
     "paw-raised": {

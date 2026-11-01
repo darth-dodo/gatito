@@ -24,7 +24,7 @@ function readRig(species: Species): Rig {
 }
 
 /** Removes the magenta key, snaps to the art grid (nearest neighbour) and limits to 16 colours. */
-async function prepare(file: string, name: string): Promise<Buffer> {
+export async function prepare(file: string, name: string): Promise<Buffer> {
   const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   if (info.width !== info.height) {
     throw new Error(`${name}: image is ${info.width} by ${info.height}, expected a square`);
