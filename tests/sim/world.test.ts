@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Floor } from '../../src/ipc';
 import { TUNING } from '../../src/brain/tuning';
-import { World, type Body } from '../../src/sim/world';
+import { lerpPosition, World, type Body } from '../../src/sim/world';
 
 const floor: Floor = { x: 0, y: 0, width: 1000, bottom: 800 };
 
@@ -120,5 +120,38 @@ describe('World', () => {
     }).not.toThrow();
     w.remove('a');
     expect(w.bodies()).toHaveLength(0);
+  });
+});
+
+describe('render interpolation', () => {
+  it('lerps between the previous and current positions', () => {
+    expect(lerpPosition({ x: 0, y: 10 }, { x: 10, y: 20 }, 0)).toEqual({ x: 0, y: 10 });
+    expect(lerpPosition({ x: 0, y: 10 }, { x: 10, y: 20 }, 0.25)).toEqual({ x: 2.5, y: 12.5 });
+    expect(lerpPosition({ x: 0, y: 10 }, { x: 10, y: 20 }, 1)).toEqual({ x: 10, y: 20 });
+  });
+
+  it('draws a walking body part way into the next step on a 120 Hz frame', () => {
+    const h = TUNING.simStepSeconds;
+    const w = new World(floor);
+    w.add(body({ vx: 60 }));
+    w.step(h); // one full step: from 100 to 101
+    expect(get(w).x).toBeCloseTo(101);
+    expect(w.alpha()).toBeCloseTo(0);
+    // Drawn one step behind, between the last two steps: still at the start of the move.
+    expect(w.drawPosition(get(w)).x).toBeCloseTo(100);
+    w.step(h / 2); // half a step left over: no new step yet
+    expect(get(w).x).toBeCloseTo(101);
+    expect(w.alpha()).toBeCloseTo(0.5);
+    expect(w.drawPosition(get(w)).x).toBeCloseTo(100.5);
+  });
+
+  it('snaps on jumps instead of sliding', () => {
+    const w = new World(floor);
+    w.add(body());
+    w.step(TUNING.simStepSeconds / 2);
+    w.pickUp('a', 500, 300);
+    const p = w.drawPosition(get(w));
+    expect(p.x).toBe(get(w).x);
+    expect(p.y).toBe(get(w).y);
   });
 });

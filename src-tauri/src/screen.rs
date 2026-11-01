@@ -52,6 +52,7 @@ fn current_floor(app: &AppHandle) -> Option<Floor> {
     let (monitor_rect, work_rect) = monitor_rects(&monitor);
     let window = app.get_webview_window("overlay")?;
     let scale = window.scale_factor().ok()?;
+    app.state::<crate::overlay::ScaleFactor>().set(scale);
     let origin = window.outer_position().ok()?;
     let origin = (f64::from(origin.x) / scale, f64::from(origin.y) / scale);
     Some(floor_from(monitor_rect, work_rect, origin))

@@ -14,6 +14,16 @@ export interface Body {
   height: number;
 }
 
+export interface Position {
+  x: number;
+  y: number;
+}
+
+/** Pure: the drawn position between the previous and current simulation steps; alpha 0 is prev, 1 is curr. */
+export function lerpPosition(prev: Position, curr: Position, alpha: number): Position {
+  return { x: prev.x + (curr.x - prev.x) * alpha, y: prev.y + (curr.y - prev.y) * alpha };
+}
+
 function clamp(v: number, lo: number, hi: number): number {
   return Math.min(Math.max(v, lo), hi);
 }
@@ -21,6 +31,8 @@ function clamp(v: number, lo: number, hi: number): number {
 export class World {
   private floor: Floor;
   private readonly map = new Map<string, Body>();
+  /** Each body's position before the last fixed step, for render interpolation. */
+  private readonly prev = new Map<string, Position>();
   private remainder = 0;
 
   constructor(floor: Floor) {
@@ -33,15 +45,18 @@ export class World {
       b.x = this.clampX(b, b.x);
       if (b.grounded && !b.held) b.y = f.bottom - b.height;
       else b.y = this.clampY(b, b.y);
+      this.snap(b);
     }
   }
 
   add(b: Body): void {
     this.map.set(b.id, b);
+    this.snap(b);
   }
 
   remove(id: string): void {
     this.map.delete(id);
+    this.prev.delete(id);
   }
 
   step(dt: number): void {
@@ -49,8 +64,21 @@ export class World {
     this.remainder += dt;
     while (this.remainder >= h - 1e-9) {
       this.remainder = Math.max(0, this.remainder - h);
-      for (const b of this.map.values()) this.integrate(b, h);
+      for (const b of this.map.values()) {
+        this.snap(b);
+        this.integrate(b, h);
+      }
     }
+  }
+
+  /** How far the leftover time is into the next fixed step, 0 to 1. */
+  alpha(): number {
+    return Math.min(1, this.remainder / TUNING.simStepSeconds);
+  }
+
+  /** Where to draw a body this frame: between its last two steps, so motion is smooth at any refresh rate. */
+  drawPosition(b: Body): Position {
+    return lerpPosition(this.prev.get(b.id) ?? b, b, this.alpha());
   }
 
   pickUp(id: string, x: number, y: number): void {
@@ -78,6 +106,7 @@ export class World {
     b.x = this.clampX(b, b.x);
     b.y = this.clampY(b, b.y);
     b.grounded = b.y + b.height >= this.floor.bottom;
+    this.snap(b);
   }
 
   bodies(): Body[] {
@@ -87,6 +116,12 @@ export class World {
   private moveTo(b: Body, x: number, y: number): void {
     b.x = this.clampX(b, x);
     b.y = this.clampY(b, y);
+    this.snap(b);
+  }
+
+  /** Jumps (pick up, drag, drop, a new floor) are drawn at once, not slid into. */
+  private snap(b: Body): void {
+    this.prev.set(b.id, { x: b.x, y: b.y });
   }
 
   private clampX(b: Body, x: number): number {

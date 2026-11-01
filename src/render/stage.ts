@@ -1,7 +1,7 @@
 import { Container, Graphics, GraphicsContext, Sprite, type Application, type Spritesheet } from 'pixi.js';
 import { TUNING } from '../brain/tuning';
 import type { Pet } from '../brain/types';
-import type { Body } from '../sim/world';
+import type { Body, Position } from '../sim/world';
 import { PART_NAMES, type PartName } from './artNames';
 import type { FloatingZ, Heart } from './effects';
 import { fadeKey, nextFade, NO_FADE, topAlpha, type FadeState } from './fade';
@@ -86,7 +86,8 @@ export class PetStage {
     this.entries.delete(id);
   }
 
-  draw(id: string, body: Body, frame: RigFrame): void {
+  /** Draws a pet; `at` is the interpolated position (defaults to the body's). */
+  draw(id: string, body: Body, frame: RigFrame, at: Position = body): void {
     const e = this.entries.get(id);
     if (!e) return;
     const s = TUNING.renderScale;
@@ -97,8 +98,8 @@ export class PetStage {
     const [ax, ay] = RIG.body.anchor;
     const pivotX = facing === 1 ? ax * CELL : CELL - ax * CELL;
     e.outer.position.set(
-      Math.round(body.x + (pivotX - CAT_BOX.left) * s),
-      Math.round(body.y + (ay * CELL - CAT_BOX.top) * s),
+      Math.round(at.x + (pivotX - CAT_BOX.left) * s),
+      Math.round(at.y + (ay * CELL - CAT_BOX.top) * s),
     );
 
     // The base look stays at full alpha underneath; a new look fades in on top of it.

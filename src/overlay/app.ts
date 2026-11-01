@@ -1,4 +1,5 @@
-import { Application, type Spritesheet } from 'pixi.js';
+/// <reference types="vite/client" />
+import { Application, UPDATE_PRIORITY, type Spritesheet } from 'pixi.js';
 import type { Floor, Point, Rect } from '../ipc';
 import { activeSeconds, clampFrameDelta } from '../brain/clock';
 import { fade, updateLearned } from '../brain/learning';
@@ -8,6 +9,7 @@ import { TUNING } from '../brain/tuning';
 import type { Pet } from '../brain/types';
 import { loadAtlas } from '../render/atlas';
 import { floatingZs, heartBurst, risingHearts } from '../render/effects';
+import { debugEnabled, frameReadout } from '../render/frameStats';
 import { CAT_BOX, headTop, rigPose } from '../render/rig';
 import { PetStage } from '../render/stage';
 import { PetController } from '../sim/controller';
@@ -105,6 +107,15 @@ function hitboxPusher(host: PetHost): (bodies: readonly Body[], now: number, hel
   };
 }
 
+/** `localStorage.windowsillDebug`, or null where storage is unavailable. */
+function storedDebugFlag(): string | null {
+  try {
+    return window.localStorage.getItem('windowsillDebug');
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Feeds the canvas's button events to the router: press, drag, release and right click. Strokes
  * never come from here; they come from the host cursor (see startPets). The overlay only gets
@@ -167,14 +178,18 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
   const baseSeed = options.seed ?? Date.now();
 
   const app = new Application();
+  // One canvas pixel per CSS pixel: the full-screen transparent canvas draws about 4x fewer pixels on a
+  // Retina display, and `pixelated` keeps the browser's upscale of the pixel art crisp.
   await app.init({
     backgroundAlpha: 0,
     resizeTo: window,
-    resolution: window.devicePixelRatio,
-    autoDensity: true,
+    resolution: 1,
     antialias: false,
     roundPixels: true,
   });
+  app.canvas.style.width = '100%';
+  app.canvas.style.height = '100%';
+  app.canvas.style.imageRendering = 'pixelated';
   options.container.appendChild(app.canvas);
 
   let floor = await host.getFloor();
@@ -231,6 +246,24 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
     }),
   ]);
 
+  const readout = debugEnabled(window.location.search, storedDebugFlag(), import.meta.env.WINDOWSILL_DEBUG)
+    ? frameReadout(document.body)
+    : null;
+
+  if (readout) {
+    // Brackets each frame's work: before the pets update and after Pixi has drawn them.
+    let workStart = 0;
+    app.ticker.add(() => (workStart = performance.now()), undefined, UPDATE_PRIORITY.HIGH);
+    app.ticker.add(
+      (ticker) => {
+        const now = performance.now();
+        readout(ticker.deltaMS, now - workStart, now);
+      },
+      undefined,
+      UPDATE_PRIORITY.UTILITY,
+    );
+  }
+
   app.ticker.add((ticker) => {
     const dt = clampFrameDelta(ticker.deltaMS / 1000) * timeScale;
     const userIdleSeconds = host.userIdleSeconds();
@@ -255,7 +288,7 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
       }
       const { name, t } = c.anim();
       const frame = rigPose(name, t, c.pet.mood, { walkFrames });
-      stage.draw(c.pet.id, b, frame);
+      stage.draw(c.pet.id, b, frame, world.drawPosition(b));
       stage.drawZs(c.pet.id, name === 'nap' || name === 'cuddle-nap' ? floatingZs(t, headTop(frame.pose)) : []);
       const tapAge = nowSeconds - (tappedAt.get(c.pet.id) ?? -Infinity);
       stage.drawHearts(c.pet.id, name === 'purr' ? risingHearts(t) : heartBurst(tapAge));
