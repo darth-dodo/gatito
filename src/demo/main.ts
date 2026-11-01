@@ -68,12 +68,13 @@ if (!container) throw new Error('demo.html is missing #pets');
 
 void startPets(browserHost(), {
   pets: [
+    // Three cats and three dogs, alternating along the floor.
     pet('cat', 'Mochi', 'orange-tabby', 'cosy', { affection: 70, energy: 55 }),
     pet('dog', 'Biscuit', 'golden', 'social', { affection: 85, energy: 70 }),
     pet('cat', 'Pixel', 'black', 'mischievous', { affection: 40, energy: 85 }),
-    pet('cat', 'Snow', 'white', 'curious', { affection: 60, energy: 75 }),
-    pet('dog', 'Cocoa', 'brown', 'curious', { affection: 55, energy: 80 }),
+    pet('dog', 'Snow', 'white', 'curious', { affection: 60, energy: 75 }),
     pet('cat', 'Ash', 'grey', 'social', { affection: 80, energy: 65 }),
+    pet('dog', 'Cocoa', 'brown', 'curious', { affection: 55, energy: 80 }),
   ],
   seed,
   timeScale: speed,

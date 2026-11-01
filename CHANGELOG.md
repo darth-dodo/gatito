@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The README covers cats and dogs (how a dog differs, which coats exist), how to run from source and how pet art is made. Its demo video and GIF show three cats and three dogs.
 - Per-pose tail placement and the ears and eyes layered on the sit pose moved from `rig.ts` into `art/rig/<species>.json`, so each species tunes its own puppet; cats look exactly as before.
 - Pet art uses a 96 by 96 grid shown at 1x instead of 48 by 48 at 2x, so generated art keeps its detail at the same size on screen; the `sit` pose is drawn without ears and eyes, which are layered on ([#14](https://github.com/darth-dodo/windowsill/pull/14)).
 - CI runs the app build in parallel and as a fast debug compile on pull requests; the full release bundle runs on main.
