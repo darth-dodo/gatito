@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HEART_BURST_SECONDS, MAX_HEARTS, heartBurst, risingHearts } from '../../src/render/effects';
+import { HEART_BURST_SECONDS, MAX_HEARTS, heartBurst, risingHearts, SPARKLE_SECONDS, sparkleBurst } from '../../src/render/effects';
 
 describe('risingHearts', () => {
   it('shows nothing before purring starts', () => {
@@ -47,6 +47,27 @@ describe('heartBurst', () => {
     for (const h of [...early, ...late]) {
       expect(h.alpha).toBeGreaterThanOrEqual(0);
       expect(h.alpha).toBeLessThanOrEqual(1);
+    }
+  });
+});
+
+describe('sparkleBurst', () => {
+  it('is empty before and after the sparkle', () => {
+    expect(sparkleBurst(-0.01)).toEqual([]);
+    expect(sparkleBurst(SPARKLE_SECONDS)).toEqual([]);
+    expect(sparkleBurst(Infinity)).toEqual([]);
+  });
+
+  it('stars burst outward around the cat and fade', () => {
+    const early = sparkleBurst(0.1 * SPARKLE_SECONDS);
+    const late = sparkleBurst(0.9 * SPARKLE_SECONDS);
+    expect(early.length).toBe(6);
+    const reach = (s: { x: number; y: number }): number => Math.hypot(s.x, s.y + 16);
+    expect(reach(late[0]!)).toBeGreaterThan(reach(early[0]!));
+    expect(late[0]!.alpha).toBeLessThan(early[0]!.alpha);
+    for (const s of [...early, ...late]) {
+      expect(s.alpha).toBeGreaterThanOrEqual(0);
+      expect(s.alpha).toBeLessThanOrEqual(1);
     }
   });
 });

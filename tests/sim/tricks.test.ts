@@ -3,7 +3,11 @@ import { newPairings } from '../../src/brain/learning';
 import type { Rng } from '../../src/brain/rng';
 import { TUNING } from '../../src/brain/tuning';
 import type { Cue, Pet, Trick } from '../../src/brain/types';
-import { TrickSession } from '../../src/sim/trickSession';
+import type { Floor } from '../../src/ipc';
+import { ANIM_SECONDS } from '../../src/render/rig';
+import { PetController } from '../../src/sim/controller';
+import { PetTrainer, TrickSession } from '../../src/sim/trickSession';
+import type { Body } from '../../src/sim/world';
 
 function pet(over: Partial<Pet> = {}): Pet {
   return {
@@ -157,5 +161,109 @@ describe('TrickSession', () => {
     const c: Cue = 'whistle';
     const t: Trick = 'spin';
     expect([c, t]).toEqual(['whistle', 'spin']);
+  });
+});
+
+describe('PetTrainer', () => {
+  const floor: Floor = { x: 0, y: 0, width: 1000, bottom: 800 };
+  const FRAME = 1 / 60;
+
+  function rig(over: Partial<Pet> = {}, bodyOver: Partial<Body> = {}) {
+    const body: Body = {
+      id: 'mochi', x: 400, y: 720, vx: 0, vy: 0, facing: 1, held: false, grounded: true, width: 84, height: 80,
+      ...bodyOver,
+    };
+    const controller = new PetController(pet(over), body, fixed(0.5));
+    const trainer = new PetTrainer(controller, fixed(0), () => body.held);
+    /** Steps controller and trainer together, as the overlay's ticker does. */
+    const run = (seconds: number): string[] => {
+      const kinds: string[] = [];
+      for (let t = 0; t < seconds; t += FRAME) {
+        controller.update(FRAME, { cursor: null, userIdleSeconds: 0, floor });
+        kinds.push(...trainer.update(FRAME).map((e) => e.kind));
+      }
+      return kinds;
+    };
+    return { body, controller, trainer, run };
+  }
+
+  it('a cue plays the trick, and the window opens when it ends', () => {
+    const { controller, trainer, run } = rig();
+    expect(trainer.cue('whistle')).toEqual([{ kind: 'play', anim: 'spin' }]);
+    expect(controller.anim().name).toBe('spin');
+    run(ANIM_SECONDS.spin * 0.5);
+    expect(trainer.phase()).toBe('playing');
+    run(ANIM_SECONDS.spin * 0.5 + 0.1);
+    expect(trainer.phase()).toBe('window');
+  });
+
+  it('petting inside the window rewards, raises the pairing and mood, and purrs', () => {
+    const { controller, trainer, run } = rig();
+    const before = controller.pet;
+    trainer.cue('whistle');
+    run(ANIM_SECONDS.spin + 0.5);
+    expect(trainer.petted().map((e) => e.kind)).toEqual(['rewarded']);
+    expect(controller.pet.pairings.whistle.spin).toBeGreaterThan(before.pairings.whistle.spin);
+    expect(controller.pet.mood.affection).toBeGreaterThan(before.mood.affection);
+    expect(controller.anim().name).toBe('purr');
+    expect(trainer.phase()).toBe('idle');
+  });
+
+  it('petting during the trick is not a reward', () => {
+    const { trainer } = rig();
+    trainer.cue('whistle');
+    expect(trainer.petted()).toEqual([]);
+    expect(trainer.phase()).toBe('playing');
+  });
+
+  it('silence after the trick is no reward, once', () => {
+    const { controller, trainer, run } = rig();
+    const before = controller.pet.pairings.whistle.spin;
+    trainer.cue('whistle');
+    const kinds = run(ANIM_SECONDS.spin + WINDOW + 1);
+    expect(kinds).toEqual(['not-rewarded']);
+    expect(controller.pet.pairings.whistle.spin).toBeLessThan(before);
+  });
+
+  it('first learn reports the sparkle once, not on later rounds', () => {
+    const strong = { ...newPairings(), whistle: { spin: 30, 'sit-up': 1, 'roll-over': 1, 'high-five': 1, 'chase-tail': 1 } };
+    const { trainer, run } = rig({ pairings: strong });
+    const round = (): string[] => {
+      trainer.cue('whistle');
+      run(ANIM_SECONDS.spin + 0.5);
+      const kinds = trainer.petted().map((e) => e.kind);
+      run(ANIM_SECONDS.purr + 0.5);
+      return kinds;
+    };
+    expect(round()).toEqual(['rewarded', 'learned']);
+    expect(round()).toEqual(['rewarded']);
+  });
+
+  it('picking the pet up drops the round', () => {
+    const { body, controller, trainer, run } = rig();
+    const before = controller.pet.pairings;
+    trainer.cue('whistle');
+    body.held = true;
+    run(ANIM_SECONDS.spin + WINDOW + 1);
+    expect(trainer.phase()).toBe('idle');
+    expect(controller.pet.pairings).toEqual(before);
+  });
+
+  it('a pet in the air cannot start a round', () => {
+    const { trainer } = rig({}, { grounded: false });
+    trainer.cue('whistle');
+    expect(trainer.phase()).toBe('idle');
+  });
+
+  it('yawn and walk-away play their animations instead of a trick', () => {
+    const tired = rig({ mood: { affection: 60, energy: 5 } });
+    tired.trainer.cue('clap');
+    expect(tired.controller.anim().name).toBe('yawn');
+    tired.run(ANIM_SECONDS.yawn + 0.5);
+    expect(tired.trainer.phase()).toBe('idle');
+
+    const cross = rig({ mood: { affection: 5, energy: 60 } });
+    cross.trainer.cue('clap');
+    expect(cross.controller.anim().name).toBe('wander');
   });
 });

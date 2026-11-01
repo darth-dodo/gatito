@@ -103,3 +103,73 @@ export class TrickSession {
     };
   }
 }
+
+/** What a trainer needs from a pet's controller. */
+export interface Trainee {
+  pet: Pet;
+  start(action: { kind: 'trick'; trick: Trick } | { kind: 'purr' } | { kind: 'yawn' } | { kind: 'walk-away' }): boolean;
+  actionDone(): boolean;
+}
+
+/**
+ * Runs one pet's training rounds against its controller: plays what the session asks for,
+ * opens the reward window when the animation ends, purrs on a reward, and drops the round if
+ * the pet is picked up. Returns the session's events so the host can sparkle on `learned`.
+ */
+export class PetTrainer {
+  private readonly session = new TrickSession();
+  private readonly controller: Trainee;
+  private readonly rng: Rng;
+  private readonly isHeld: () => boolean;
+
+  constructor(controller: Trainee, rng: Rng, isHeld: () => boolean) {
+    this.controller = controller;
+    this.rng = rng;
+    this.isHeld = isHeld;
+  }
+
+  phase(): 'idle' | 'playing' | 'window' {
+    return this.session.phase();
+  }
+
+  cue(cue: Cue): SessionEvent[] {
+    return this.apply(this.session.startCue(this.controller.pet, cue, this.rng));
+  }
+
+  /** Strokes or taps reached the pet; inside the reward window this is the reward. */
+  petted(): SessionEvent[] {
+    return this.apply(this.session.onStroke(this.controller.pet));
+  }
+
+  /** Call once per frame with the simulation's dt. */
+  update(dt: number): SessionEvent[] {
+    const phase = this.session.phase();
+    if (phase === 'idle') return [];
+    if (this.isHeld()) {
+      this.session.abort();
+      return [];
+    }
+    if (phase === 'playing' && this.controller.actionDone()) {
+      this.apply(this.session.actionEnded(this.controller.pet));
+      return [];
+    }
+    return this.apply(this.session.tick(dt, this.controller.pet));
+  }
+
+  private apply(r: SessionResult): SessionEvent[] {
+    const c = this.controller;
+    c.pet = r.pet;
+    for (const e of r.events) {
+      if (e.kind === 'play') {
+        const started = c.start(
+          e.anim === 'yawn' || e.anim === 'walk-away' ? { kind: e.anim } : { kind: 'trick', trick: e.anim },
+        );
+        // A pet in the air cannot play anything: no round.
+        if (!started) this.session.abort();
+      } else if (e.kind === 'rewarded') {
+        c.start({ kind: 'purr' });
+      }
+    }
+    return r.events;
+  }
+}

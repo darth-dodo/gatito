@@ -214,6 +214,8 @@ Every behaviour has a short transition so a cat never snaps between poses.
 | **Toy wand** | 🪶 |
 | **Treat bag** | 🐟 |
 
+Click a cue to give it. A click anywhere else closes the ring without a cue. The ring also closes by itself after 8 seconds with no choice, or once the cursor moves about 200 px away from it *(both tunable)*, because on the real desktop a click away from the ring and the pets goes to other apps.
+
 **The trick list (Phase 1).** **Spin**, **Sit up**, **Roll over**, **High five**, **Chase tail**.
 
 **Learning, precisely.** Each cat keeps a strength for every cue and trick pairing, starting equal.

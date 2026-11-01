@@ -24,6 +24,10 @@ export const TUNING = {
   napEnergyFactor: 6,
   wokeStretchFactor: 100,
   rewardWindowSeconds: 3,
+  /** An open cue ring with no choice closes by itself after this long. */
+  cueRingTimeoutSeconds: 8,
+  /** The cue ring closes once the cursor is this far from its centre. */
+  cueRingLeaveDistancePx: 200,
   learnedShare: 0.8,
   learnedKeepShare: 0.6,
   fadeActiveHours: 40,

@@ -2,6 +2,8 @@ import { petMood } from '../brain/mood';
 import { StrokeDetector } from '../brain/stroke';
 import { TUNING } from '../brain/tuning';
 import type { Point } from '../ipc';
+import type { Cue } from '../brain/types';
+import type { CueRing } from './cueRing';
 import type { PetController } from '../sim/controller';
 import type { Body, World } from '../sim/world';
 
@@ -36,10 +38,16 @@ export interface InputDeps {
   /** Pets in draw order: the last one is drawn on top and wins where pets overlap. */
   pets: readonly Pettable[];
   world: Pick<World, 'pickUp' | 'dragTo' | 'drop'>;
-  /** Right button on a pet: opens the cue ring (Task 13). */
+  /** Right button on a pet: the host opens the cue ring around it. */
   onCueRequest(petId: string): void;
   /** A tap petted this pet: the host shows a small heart burst. */
   onTap(petId: string): void;
+  /** The open cue ring; a press goes to it first while it is open. */
+  ring: Pick<CueRing, 'isOpen' | 'press'>;
+  /** A cue button was pressed for this pet. */
+  onCue(petId: string, cue: Cue): void;
+  /** `n` strokes or taps just reached this pet (a reward when its trick's window is open). */
+  onPetted(petId: string, n: number): void;
 }
 
 interface Stroking {
@@ -76,7 +84,8 @@ function recent(times: number[], t: number): number[] {
  * Turns input into pet reactions. Strokes come only from the host cursor (`cursorMove`): the
  * real overlay never takes focus, so macOS sends its webview no mouse moves without a button.
  * Pointer events handle the buttons: a left press and release is a tap (a pet), a left press
- * that moves dragStartPx picks a cat up and drops it, the right button asks for the cue ring.
+ * that moves dragStartPx picks a cat up and drops it, the right button asks for the cue ring,
+ * and while the ring is open a press picks a cue or, outside its buttons, closes it.
  * Strokes and taps purr a cat and keep going rolls a happy one belly up.
  * Positions are window logical px; times are seconds.
  */
@@ -146,6 +155,14 @@ export class InputRouter {
       return;
     }
     this.hold = null;
+    if (this.deps.ring.isOpen()) {
+      const chosen = this.deps.ring.press({ x, y });
+      if (chosen) {
+        this.deps.onCue(chosen.petId, chosen.cue);
+        return;
+      }
+      // A press outside the ring closed it; the press still does what it would have.
+    }
     const target = this.hit(x, y);
     if (!target) return;
     const id = target.body.id;
@@ -232,6 +249,7 @@ export class InputRouter {
   private petted(target: Pettable, s: Stroking, n: number, t: number): void {
     const c = target.controller;
     c.pet = { ...c.pet, mood: petMood(c.pet.mood, n) };
+    this.deps.onPetted(target.body.id, n);
     s.total += n;
     s.strokeTimes = recent(s.strokeTimes, t);
     s.tapTimes = recent(s.tapTimes, t);
