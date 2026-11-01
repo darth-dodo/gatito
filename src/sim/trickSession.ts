@@ -114,18 +114,19 @@ export interface Trainee {
 /**
  * Runs one pet's training rounds against its controller: plays what the session asks for,
  * opens the reward window when the animation ends, purrs on a reward, and drops the round if
- * the pet is picked up. Returns the session's events so the host can sparkle on `learned`.
+ * the pet is picked up or leaves the floor. Returns the session's events so the host can sparkle on `learned`.
  */
 export class PetTrainer {
   private readonly session = new TrickSession();
   private readonly controller: Trainee;
   private readonly rng: Rng;
-  private readonly isHeld: () => boolean;
+  private readonly isOffFloor: () => boolean;
 
-  constructor(controller: Trainee, rng: Rng, isHeld: () => boolean) {
+  /** `isOffFloor` is true while the pet is held or in the air; a round then ends unlearned. */
+  constructor(controller: Trainee, rng: Rng, isOffFloor: () => boolean) {
     this.controller = controller;
     this.rng = rng;
-    this.isHeld = isHeld;
+    this.isOffFloor = isOffFloor;
   }
 
   phase(): 'idle' | 'playing' | 'window' {
@@ -145,7 +146,7 @@ export class PetTrainer {
   update(dt: number): SessionEvent[] {
     const phase = this.session.phase();
     if (phase === 'idle') return [];
-    if (this.isHeld()) {
+    if (this.isOffFloor()) {
       this.session.abort();
       return [];
     }

@@ -6,7 +6,11 @@ import { TUNING } from '../../src/brain/tuning';
 import type { Mood, Pet } from '../../src/brain/types';
 import { CueRing, cueAt } from '../../src/overlay/cueRing';
 import { HELD_HITBOX_PAD_PX, InputRouter, cursorEscapedHold } from '../../src/overlay/input';
+import { rewardMood } from '../../src/brain/mood';
+import type { Rng } from '../../src/brain/rng';
+import { ANIM_SECONDS } from '../../src/render/rig';
 import { PetController } from '../../src/sim/controller';
+import { PetTrainer } from '../../src/sim/trickSession';
 import { World, type Body } from '../../src/sim/world';
 
 const floor: Floor = { x: 0, y: 0, width: 1000, bottom: 800 };
@@ -65,8 +69,8 @@ function setup(cats: { id: string; x: number; mood?: Mood }[]): Setup {
   const onTap = vi.fn();
   const ring = new CueRing();
   const onCue = vi.fn();
-  const onPetted = vi.fn();
-  const router = new InputRouter({ pets, world, onCueRequest, onTap, ring, onCue, onPetted });
+  const onPetted = vi.fn(() => false);
+  const router = new InputRouter({ pets, world, onCueRequest, onTap, ring, onCue, onPetted, isTraining: () => false });
   return { world, pets, router, onCueRequest, onTap, ring, onCue, onPetted };
 }
 
@@ -457,6 +461,16 @@ describe('InputRouter cue ring', () => {
     expect(onTap).not.toHaveBeenCalled();
   });
 
+  it('a right press on a cue button only closes the ring', () => {
+    const { router, ring, onCue, onCueRequest } = setup([{ id: 'mochi', x: 400 }]);
+    ring.open('mochi', { x: 442, y: 600 }, screen);
+    const p = centreOf(ring.current()!.layout.find((l) => l.cue === 'whistle')!.rect);
+    router.pointerDown(p.x, p.y, 2);
+    expect(ring.isOpen()).toBe(false);
+    expect(onCue).not.toHaveBeenCalled();
+    expect(onCueRequest).not.toHaveBeenCalled();
+  });
+
   it('clicking outside the ring closes it without choosing a cue', () => {
     const { router, ring, onCue } = setup([{ id: 'mochi', x: 400 }]);
     ring.open('mochi', { x: 442, y: 760 }, screen);
@@ -486,6 +500,59 @@ describe('InputRouter cue ring', () => {
     router.pointerDown(442, 760, 0);
     router.pointerUp(442, 760, 5);
     expect(onPetted).toHaveBeenLastCalledWith('mochi', 1);
+  });
+});
+
+describe('InputRouter with a trainer', () => {
+  const fixed = (v: number): Rng => ({ next: () => v });
+
+  /** One cat at x 400 whose router reports petting to a real PetTrainer, as the overlay does. */
+  function trained(mood: Mood = { affection: 60, energy: 60 }) {
+    const world = new World(floor);
+    const b = body('mochi', 400);
+    world.add(b);
+    const controller = new PetController(pet('mochi', mood), b, seededRng(1));
+    const trainer = new PetTrainer(controller, fixed(0), () => b.held || !b.grounded);
+    const router = new InputRouter({
+      pets: [{ body: b, controller }],
+      world,
+      ring: new CueRing(),
+      onCueRequest: () => undefined,
+      onTap: () => undefined,
+      onCue: () => undefined,
+      onPetted: () => trainer.petted().some((e) => e.kind === 'rewarded'),
+      isTraining: () => trainer.phase() === 'playing',
+    });
+    const run = (seconds: number): void => {
+      for (let t = 0; t < seconds; t += FRAME) {
+        controller.update(FRAME, { cursor: null, userIdleSeconds: 0, floor });
+        trainer.update(FRAME);
+      }
+    };
+    return { controller, trainer, router, run };
+  }
+
+  it('a reward stroke raises affection by exactly rewardMood, not stroke affection on top', () => {
+    const { controller, trainer, router, run } = trained();
+    trainer.cue('whistle');
+    run(ANIM_SECONDS.spin + 0.3);
+    expect(trainer.phase()).toBe('window');
+    const before = controller.pet.mood;
+    router.pointerDown(442, 760, 0);
+    router.pointerUp(442, 760, 100);
+    expect(controller.pet.mood.affection).toBe(rewardMood(before).affection);
+  });
+
+  it('strokes and taps during a trick do not start a purr, so the round follows the trick', () => {
+    const { controller, trainer, router } = trained();
+    trainer.cue('whistle');
+    for (let i = 0; i < TUNING.tapsForPurr + 1; i++) {
+      router.pointerDown(442, 760, 0);
+      router.pointerUp(442, 760, 100 + i * 0.1);
+    }
+    stroke(router, TUNING.strokesForPurr + 1, 101);
+    expect(controller.anim().name).toBe('spin');
+    expect(trainer.phase()).toBe('playing');
   });
 });
 

@@ -174,7 +174,7 @@ describe('PetTrainer', () => {
       ...bodyOver,
     };
     const controller = new PetController(pet(over), body, fixed(0.5));
-    const trainer = new PetTrainer(controller, fixed(0), () => body.held);
+    const trainer = new PetTrainer(controller, fixed(0), () => body.held || !body.grounded);
     /** Steps controller and trainer together, as the overlay's ticker does. */
     const run = (seconds: number): string[] => {
       const kinds: string[] = [];
@@ -244,6 +244,17 @@ describe('PetTrainer', () => {
     const before = controller.pet.pairings;
     trainer.cue('whistle');
     body.held = true;
+    run(ANIM_SECONDS.spin + WINDOW + 1);
+    expect(trainer.phase()).toBe('idle');
+    expect(controller.pet.pairings).toEqual(before);
+  });
+
+  it('a pet that leaves the floor mid trick, without being held, drops the round', () => {
+    const { body, controller, trainer, run } = rig();
+    const before = controller.pet.pairings;
+    trainer.cue('whistle');
+    run(ANIM_SECONDS.spin * 0.5);
+    body.grounded = false;
     run(ANIM_SECONDS.spin + WINDOW + 1);
     expect(trainer.phase()).toBe('idle');
     expect(controller.pet.pairings).toEqual(before);

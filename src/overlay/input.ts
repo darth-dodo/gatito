@@ -46,8 +46,13 @@ export interface InputDeps {
   ring: Pick<CueRing, 'isOpen' | 'press'>;
   /** A cue button was pressed for this pet. */
   onCue(petId: string, cue: Cue): void;
-  /** `n` strokes or taps just reached this pet (a reward when its trick's window is open). */
-  onPetted(petId: string, n: number): void;
+  /**
+   * `n` strokes or taps just reached this pet. Returns true when they were taken as a trick
+   * reward, which carries its own mood change, so the stroke affection is not added on top.
+   */
+  onPetted(petId: string, n: number): boolean;
+  /** True while this pet is playing a cued trick: petting then starts no purr or belly up. */
+  isTraining(petId: string): boolean;
 }
 
 interface Stroking {
@@ -156,11 +161,13 @@ export class InputRouter {
     }
     this.hold = null;
     if (this.deps.ring.isOpen()) {
+      // Only the left button gives a cue; any other press just closes the ring.
       const chosen = this.deps.ring.press({ x, y });
-      if (chosen) {
+      if (chosen && button === 0) {
         this.deps.onCue(chosen.petId, chosen.cue);
         return;
       }
+      if (chosen) return;
       // A press outside the ring closed it; the press still does what it would have.
     }
     const target = this.hit(x, y);
@@ -248,12 +255,15 @@ export class InputRouter {
   /** `n` new strokes or taps just reached the pet: affection, then purr or belly up. */
   private petted(target: Pettable, s: Stroking, n: number, t: number): void {
     const c = target.controller;
-    c.pet = { ...c.pet, mood: petMood(c.pet.mood, n) };
-    this.deps.onPetted(target.body.id, n);
+    const id = target.body.id;
+    const training = this.deps.isTraining(id);
+    if (!this.deps.onPetted(id, n)) c.pet = { ...c.pet, mood: petMood(c.pet.mood, n) };
     s.total += n;
     s.strokeTimes = recent(s.strokeTimes, t);
     s.tapTimes = recent(s.tapTimes, t);
 
+    // A cued trick is playing: a purr now would cut it short and end the round early.
+    if (training) return;
     const now = c.anim().name;
     if (now === 'belly-up') return;
     if (now !== 'purr') s.purrFrom = null;

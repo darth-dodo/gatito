@@ -201,7 +201,7 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<{ s
     const controller = new PetController(pet, body, rng);
     // Its own stream, so training never shifts the pet's behaviour choices.
     const trainerRng = seededRng((baseSeed + i * SEED_STRIDE + 1) >>> 0);
-    pets.push({ body, controller, trainer: new PetTrainer(controller, trainerRng, () => body.held) });
+    pets.push({ body, controller, trainer: new PetTrainer(controller, trainerRng, () => body.held || !body.grounded) });
   }
 
   /** When each pet was last tapped (performance.now() seconds), for its heart burst. */
@@ -228,8 +228,12 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<{ s
     },
     onPetted: (id) => {
       const p = byId(id);
-      if (p) noteLearned(id, p.trainer.petted());
+      if (!p) return false;
+      const events = p.trainer.petted();
+      noteLearned(id, events);
+      return events.some((e) => e.kind === 'rewarded');
     },
+    isTraining: (id) => byId(id)?.trainer.phase() === 'playing',
     onTap: (id) => tappedAt.set(id, performance.now() / 1000),
   });
   const offPointer = listenPointer(app.canvas, router);
