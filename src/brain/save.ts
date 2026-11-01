@@ -68,11 +68,11 @@ function pairings(v: unknown): Pairings {
   return out;
 }
 
-function learned(v: unknown): Pet['learned'] {
-  const o = obj(v, 'learned');
+function learned(v: unknown, what = 'learned'): Pet['learned'] {
+  const o = obj(v, what);
   const out: Partial<Record<Cue, Trick>> = {};
   for (const [k, t] of Object.entries(o)) {
-    out[oneOf(k, CUES, 'learned cue')] = oneOf(t, TRICKS, 'learned trick');
+    out[oneOf(k, CUES, `${what} cue`)] = oneOf(t, TRICKS, `${what} trick`);
   }
   return out;
 }
@@ -81,7 +81,7 @@ function pet(v: unknown): Pet {
   const o = obj(v, 'pet');
   if (o.species !== 'cat') fail('unknown species (only cat is supported)');
   const mood = obj(o.mood, 'mood');
-  return {
+  const out: Pet = {
     id: str(o.id, 'id'),
     species: 'cat',
     name: str(o.name, 'name'),
@@ -92,6 +92,8 @@ function pet(v: unknown): Pet {
     pairings: pairings(o.pairings),
     learned: learned(o.learned),
   };
+  if (o.celebrated !== undefined) out.celebrated = learned(o.celebrated, 'celebrated');
+  return out;
 }
 
 /** Never throws; any problem is reported as `{ ok: false, reason }`. */
