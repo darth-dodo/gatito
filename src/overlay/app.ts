@@ -1,18 +1,19 @@
-/// <reference types="vite/client" />
-import { Application, Assets, Spritesheet, type SpritesheetData, type Texture } from 'pixi.js';
+import { Application } from 'pixi.js';
 import type { Floor, Point, Rect } from '../ipc';
 import { activeSeconds, clampFrameDelta } from '../brain/clock';
 import { fade, updateLearned } from '../brain/learning';
 import { tickMood } from '../brain/mood';
 import { seededRng } from '../brain/rng';
 import { TUNING } from '../brain/tuning';
-import type { Colour, Pet } from '../brain/types';
+import type { Pet } from '../brain/types';
+import { loadAtlas } from '../render/atlas';
 import { floatingZs, heartBurst, risingHearts, sparkleBurst } from '../render/effects';
 import { CueRingView } from '../render/cueRingView';
 import { CAT_BOX, rigPose } from '../render/rig';
 import { PetStage } from '../render/stage';
 import { PetController } from '../sim/controller';
 import { PetTrainer } from '../sim/trickSession';
+import { NapTime, callOverX } from './napTime';
 import { World, type Body } from '../sim/world';
 import { CueRing } from './cueRing';
 import { HELD_HITBOX_PAD_PX, InputRouter, cursorEscapedHold } from './input';
@@ -21,16 +22,6 @@ import { HELD_HITBOX_PAD_PX, InputRouter, cursorEscapedHold } from './input';
 const HITBOX_MIN_INTERVAL_MS = 1000 / 30;
 /** Spreads per-pet seeds apart (golden ratio in 32 bits). */
 const SEED_STRIDE = 0x9e3779b9;
-
-const ATLAS_DATA = import.meta.glob<SpritesheetData>('../assets/atlas/*.json', {
-  eager: true,
-  import: 'default',
-});
-const ATLAS_IMAGES = import.meta.glob<string>('../assets/atlas/*.png', {
-  eager: true,
-  query: '?url',
-  import: 'default',
-});
 
 type Unlisten = () => void;
 
@@ -50,6 +41,8 @@ export interface PetOptions {
   seed?: number;
   /** Multiplies the clamped frame delta for the simulation only. Defaults to 1. */
   timeScale?: number;
+  /** Nap time as saved; when on, the pets start hidden. Defaults to off. */
+  napTime?: boolean;
   container: HTMLElement;
 }
 
@@ -62,18 +55,6 @@ interface Living {
 /** The usable screen as a rect, for laying out the cue ring. */
 function floorRect(f: Floor): Rect {
   return { x: f.x, y: f.y, width: f.width, height: f.bottom - f.y };
-}
-
-async function loadAtlas(species: Pet['species'], colour: Colour): Promise<Spritesheet> {
-  const key = `../assets/atlas/${species}-${colour}`;
-  const data = ATLAS_DATA[`${key}.json`];
-  const url = ATLAS_IMAGES[`${key}.png`];
-  if (!data || !url) throw new Error(`No sprite sheet for ${species} ${colour}`);
-  const texture = await Assets.load<Texture>(url);
-  texture.source.scaleMode = 'nearest';
-  const sheet = new Spritesheet(texture, data);
-  await sheet.parse();
-  return sheet;
 }
 
 /** Places pet `index` of `count` evenly along the floor; a lone pet starts in the middle. */
@@ -93,6 +74,20 @@ function spawnBody(id: string, floor: Floor, index: number, count: number): Body
     width,
     height,
   };
+}
+
+/** What a pet shows while Nap time has it curled up. */
+function curledAnim(t: number): { name: 'nap'; t: number } {
+  return { name: 'nap', t };
+}
+
+/** A newcomer drops in from the top of the floor at `x01` (0 to 1) across it, and falls. */
+function dropBody(id: string, floor: Floor, x01: number): Body {
+  const body = spawnBody(id, floor, 0, 1);
+  body.x = floor.x + x01 * Math.max(0, floor.width - body.width);
+  body.y = floor.y;
+  body.grounded = false;
+  return body;
 }
 
 /**
@@ -168,8 +163,23 @@ function listenPointer(canvas: HTMLCanvasElement, router: InputRouter): Unlisten
   return () => off.abort();
 }
 
+export interface RunningPets {
+  stop(): void;
+  /** The pets as they are now, moods and learning included. */
+  pets(): Pet[];
+  /** Adds a pet that drops in from the top of the screen. */
+  addPet(pet: Pet): Promise<void>;
+  removePet(id: string): void;
+  /** Applies a new name, colour or style; mood and learning stay as they are. */
+  updatePet(pet: Pet): Promise<void>;
+  /** Nap time: the cats curl up and fade out (mood clock stops), or fade back in. */
+  setNapTime(on: boolean): void;
+  /** Walks the pet to the middle of the screen. */
+  callOver(id: string): void;
+}
+
 /** Runs the pets (brain, world, controllers and PixiJS stage) inside `container`, fed by `host`. */
-export async function startPets(host: PetHost, options: PetOptions): Promise<{ stop(): void }> {
+export async function startPets(host: PetHost, options: PetOptions): Promise<RunningPets> {
   const timeScale = options.timeScale ?? 1;
   const baseSeed = options.seed ?? Date.now();
 
@@ -192,16 +202,39 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<{ s
   const ringView = new CueRingView(app);
   const pushHitboxes = hitboxPusher(host);
   const pets: Living[] = [];
+  const nap = new NapTime(options.napTime ?? false);
+  let napT = 0;
+  /** Ids being added; removing one before its art loads cancels it. */
+  const arriving = new Set<string>();
+  let spawned = 0;
+
+  const live = async (pet: Pet, body: Body): Promise<void> => {
+    arriving.add(pet.id);
+    let atlas: Awaited<ReturnType<typeof loadAtlas>>;
+    try {
+      atlas = await loadAtlas(pet.species, pet.colour);
+    } catch (e) {
+      // A failed load must not leave the id stuck, or the pet could never be added again.
+      arriving.delete(pet.id);
+      throw e;
+    }
+    if (!arriving.delete(pet.id)) return;
+    world.add(body);
+    stage.add(pet, atlas);
+    const seed = baseSeed + spawned++ * SEED_STRIDE;
+    const controller = new PetController(pet, body, seededRng(seed >>> 0));
+    // Its own stream, so training never shifts the pet's behaviour choices.
+    const trainer = new PetTrainer(
+      controller,
+      seededRng((seed + 1) >>> 0),
+      () => body.held || !body.grounded,
+      () => nap.curled,
+    );
+    pets.push({ body, controller, trainer });
+  };
 
   for (const [i, pet] of options.pets.entries()) {
-    const body = spawnBody(pet.id, floor, i, options.pets.length);
-    world.add(body);
-    stage.add(pet, await loadAtlas(pet.species, pet.colour));
-    const rng = seededRng((baseSeed + i * SEED_STRIDE) >>> 0);
-    const controller = new PetController(pet, body, rng);
-    // Its own stream, so training never shifts the pet's behaviour choices.
-    const trainerRng = seededRng((baseSeed + i * SEED_STRIDE + 1) >>> 0);
-    pets.push({ body, controller, trainer: new PetTrainer(controller, trainerRng, () => body.held || !body.grounded) });
+    await live(pet, spawnBody(pet.id, floor, i, options.pets.length));
   }
 
   /** When each pet was last tapped (performance.now() seconds), for its heart burst. */
@@ -218,7 +251,8 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<{ s
     ring,
     onCueRequest: (id) => {
       const p = byId(id);
-      if (!p) return;
+      // Curled pets take no cues.
+      if (!p || nap.curled) return;
       const b = p.body;
       ring.open(id, { x: b.x + b.width / 2, y: b.y + b.height / 2 }, floorRect(floor));
     },
@@ -242,7 +276,8 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<{ s
     // The one source of strokes: the webview never sees plain mouse moves in the real overlay.
     host.onCursor((p) => {
       cursor = p;
-      router.cursorMove(p.x, p.y, performance.now() / 1000);
+      // Curled or hidden pets cannot be stroked.
+      if (!nap.curled) router.cursorMove(p.x, p.y, performance.now() / 1000);
     }),
     host.onFloorChanged((f) => {
       floor = f;
@@ -253,17 +288,22 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<{ s
   app.ticker.add((ticker) => {
     const realDt = clampFrameDelta(ticker.deltaMS / 1000);
     const dt = realDt * timeScale;
+    // Nap time puts the ring away with the cats.
+    if (nap.curled) ring.close();
     ring.update(realDt, cursor);
     ringView.draw(ring.current()?.layout ?? null);
     const userIdleSeconds = host.userIdleSeconds();
-    const active = activeSeconds(dt, { userIdleSeconds, napTime: false });
+    const active = activeSeconds(dt, { userIdleSeconds, napTime: nap.on });
     const ctx = { cursor, userIdleSeconds, floor };
 
+    nap.update(dt);
     const heldId = router.heldId();
     const held = heldId === null ? undefined : pets.find((p) => p.body.id === heldId);
-    if (held && cursorEscapedHold(held.body, cursor)) router.release();
+    // A pet cannot stay in your hand once Nap time hides it.
+    if (held && (nap.hidden || cursorEscapedHold(held.body, cursor))) router.release();
 
-    for (const p of pets) p.controller.update(dt, ctx);
+    if (!nap.curled) for (const p of pets) p.controller.update(dt, ctx);
+    else for (const p of pets) if (!p.body.held) p.body.vx = 0;
     world.step(dt);
     for (const p of pets) noteLearned(p.body.id, p.trainer.update(dt));
 
@@ -276,21 +316,58 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<{ s
           pairings: fade(c.pet.pairings, active),
         });
       }
-      const { name, t } = c.anim();
+      const { name, t } = nap.curled ? curledAnim(napT) : c.anim();
+      stage.setAlpha(c.pet.id, nap.alpha);
       stage.draw(c.pet.id, b, rigPose(name, t, c.pet.mood));
       stage.drawZs(c.pet.id, name === 'nap' || name === 'cuddle-nap' ? floatingZs(t) : []);
       const tapAge = nowSeconds - (tappedAt.get(c.pet.id) ?? -Infinity);
       stage.drawHearts(c.pet.id, name === 'purr' ? risingHearts(t) : heartBurst(tapAge));
       stage.drawSparkles(c.pet.id, sparkleBurst(nowSeconds - (learnedAt.get(c.pet.id) ?? -Infinity)));
     }
-    pushHitboxes(world.bodies(), performance.now(), router.heldId(), ring.rects());
+    napT = nap.curled ? napT + dt : 0;
+    pushHitboxes(nap.hidden ? [] : world.bodies(), performance.now(), router.heldId(), ring.rects());
   });
 
   return {
+    setNapTime: (on) => nap.setOn(on),
+    callOver(id) {
+      const p = pets.find((q) => q.controller.pet.id === id);
+      const x = p ? callOverX(nap, floor, p.body.width) : null;
+      if (p && x !== null) p.controller.start({ kind: 'go-to', x });
+    },
     stop() {
       offPointer();
       for (const off of unlisten) off();
       app.destroy({ removeView: true }, { children: true });
+    },
+    pets: () => pets.map((p) => p.controller.pet),
+    async addPet(pet) {
+      if (arriving.has(pet.id) || pets.some((p) => p.controller.pet.id === pet.id)) return;
+      await live(pet, dropBody(pet.id, floor, Math.random()));
+    },
+    removePet(id) {
+      arriving.delete(id);
+      const i = pets.findIndex((p) => p.controller.pet.id === id);
+      if (i < 0) return;
+      world.remove(id);
+      stage.remove(id);
+      if (ring.current()?.petId === id) ring.close();
+      // The pet's trainer goes with it.
+      pets.splice(i, 1);
+      learnedAt.delete(id);
+      tappedAt.delete(id);
+    },
+    async updatePet(pet) {
+      const find = (): Living | undefined => pets.find((p) => p.controller.pet.id === pet.id);
+      const before = find();
+      if (!before) return;
+      const recoloured = pet.colour !== before.controller.pet.colour;
+      const atlas = recoloured ? await loadAtlas(pet.species, pet.colour) : null;
+      const living = find();
+      if (!living) return;
+      const next = { ...living.controller.pet, name: pet.name, colour: pet.colour, style: pet.style };
+      if (atlas) stage.add(next, atlas);
+      living.controller.pet = next;
     },
   };
 }

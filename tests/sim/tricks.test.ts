@@ -174,7 +174,8 @@ describe('PetTrainer', () => {
       ...bodyOver,
     };
     const controller = new PetController(pet(over), body, fixed(0.5));
-    const trainer = new PetTrainer(controller, fixed(0), () => body.held || !body.grounded);
+    const nap = { curled: false };
+    const trainer = new PetTrainer(controller, fixed(0), () => body.held || !body.grounded, () => nap.curled);
     /** Steps controller and trainer together, as the overlay's ticker does. */
     const run = (seconds: number): string[] => {
       const kinds: string[] = [];
@@ -184,7 +185,7 @@ describe('PetTrainer', () => {
       }
       return kinds;
     };
-    return { body, controller, trainer, run };
+    return { body, controller, trainer, run, nap };
   }
 
   it('a cue plays the trick, and the window opens when it ends', () => {
@@ -258,6 +259,28 @@ describe('PetTrainer', () => {
     run(ANIM_SECONDS.spin + WINDOW + 1);
     expect(trainer.phase()).toBe('idle');
     expect(controller.pet.pairings).toEqual(before);
+  });
+
+  it('Nap time curling the pet mid trick drops the round', () => {
+    const { controller, trainer, nap } = rig();
+    const before = controller.pet.pairings;
+    trainer.cue('whistle');
+    nap.curled = true;
+    // While curled the overlay stops stepping controllers; only trainers tick.
+    for (let t = 0; t < ANIM_SECONDS.spin + WINDOW + 1; t += FRAME) trainer.update(FRAME);
+    expect(trainer.phase()).toBe('idle');
+    nap.curled = false;
+    expect(trainer.petted()).toEqual([]);
+    expect(controller.pet.pairings).toEqual(before);
+  });
+
+  it('a curled pet starts no round', () => {
+    const { controller, trainer, nap } = rig();
+    nap.curled = true;
+    const anim = controller.anim().name;
+    expect(trainer.cue('whistle')).toEqual([]);
+    expect(trainer.phase()).toBe('idle');
+    expect(controller.anim().name).toBe(anim);
   });
 
   it('a pet in the air cannot start a round', () => {

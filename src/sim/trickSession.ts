@@ -114,19 +114,24 @@ export interface Trainee {
 /**
  * Runs one pet's training rounds against its controller: plays what the session asks for,
  * opens the reward window when the animation ends, purrs on a reward, and drops the round if
- * the pet is picked up or leaves the floor. Returns the session's events so the host can sparkle on `learned`.
+ * the pet is picked up, leaves the floor or curls up for Nap time. Returns the session's events so the host can sparkle on `learned`.
  */
 export class PetTrainer {
   private readonly session = new TrickSession();
   private readonly controller: Trainee;
   private readonly rng: Rng;
   private readonly isOffFloor: () => boolean;
+  private readonly isCurled: () => boolean;
 
-  /** `isOffFloor` is true while the pet is held or in the air; a round then ends unlearned. */
-  constructor(controller: Trainee, rng: Rng, isOffFloor: () => boolean) {
+  /**
+   * `isOffFloor` is true while the pet is held or in the air, `isCurled` while Nap time has it
+   * curled up. Either way no round starts, and a running one ends unlearned.
+   */
+  constructor(controller: Trainee, rng: Rng, isOffFloor: () => boolean, isCurled: () => boolean = () => false) {
     this.controller = controller;
     this.rng = rng;
     this.isOffFloor = isOffFloor;
+    this.isCurled = isCurled;
   }
 
   phase(): 'idle' | 'playing' | 'window' {
@@ -134,6 +139,7 @@ export class PetTrainer {
   }
 
   cue(cue: Cue): SessionEvent[] {
+    if (this.unavailable()) return [];
     return this.apply(this.session.startCue(this.controller.pet, cue, this.rng));
   }
 
@@ -146,7 +152,7 @@ export class PetTrainer {
   update(dt: number): SessionEvent[] {
     const phase = this.session.phase();
     if (phase === 'idle') return [];
-    if (this.isOffFloor()) {
+    if (this.unavailable()) {
       this.session.abort();
       return [];
     }
@@ -155,6 +161,10 @@ export class PetTrainer {
       return [];
     }
     return this.apply(this.session.tick(dt, this.controller.pet));
+  }
+
+  private unavailable(): boolean {
+    return this.isOffFloor() || this.isCurled();
   }
 
   private apply(r: SessionResult): SessionEvent[] {

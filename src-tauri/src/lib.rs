@@ -1,15 +1,26 @@
+mod create;
+mod idle;
 mod overlay;
+mod quit;
 mod screen;
 mod store;
+mod tray;
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .manage(overlay::HitBoxes::default())
+        .manage(tray::TrayState::default())
+        .manage(create::CreateTarget::default())
         .setup(|app| {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
             overlay::create(app.handle())?;
+            tray::create(app.handle())?;
             screen::start_floor_poll(app.handle().clone());
             overlay::start_cursor_poll(app.handle().clone());
             Ok(())
@@ -19,8 +30,19 @@ pub fn run() {
             overlay::set_hitboxes,
             store::load_save,
             store::write_save,
-            store::quarantine_save
+            store::quarantine_save,
+            idle::user_idle_seconds,
+            tray::set_menu_pets,
+            tray::set_nap_time,
+            create::open_create_window,
+            create::create_window_target,
+            quit::quit_ready
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            if let tauri::RunEvent::ExitRequested { api, .. } = event {
+                quit::on_exit_requested(app, &api);
+            }
+        });
 }

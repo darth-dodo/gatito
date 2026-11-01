@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
+import type { CreateWindowTarget, MenuPet } from "./overlay/menu";
+import type { PetsChanged } from "./overlay/persistence";
 
 /** Usable screen area in logical pixels, relative to the overlay window. */
 export interface Floor {
@@ -43,10 +45,65 @@ export const ipc = {
   setHitboxes(rects: Rect[]): Promise<void> {
     return invoke<void>("set_hitboxes", { boxes: rects });
   },
+  /** Open (or bring forward) the New pet window; with an id it edits that pet, with `rehome` it asks to rehome it. */
+  openCreateWindow(target: CreateWindowTarget): Promise<void> {
+    return invoke<void>("open_create_window", { petId: target.petId, rehome: target.rehome });
+  },
+  /** What the New pet window was opened for (no pet means a new one). */
+  createWindowTarget(): Promise<CreateWindowTarget> {
+    return invoke<CreateWindowTarget>("create_window_target");
+  },
+  /** Tell Rust the save is flushed so the app can exit. */
+  quitReady(): Promise<void> {
+    return invoke<void>("quit_ready");
+  },
+  onQuitRequested(cb: () => void): Promise<UnlistenFn> {
+    return listen("quit-requested", () => cb());
+  },
+  /** The New pet window opened for a different pet. */
+  onCreateTarget(cb: () => void): Promise<UnlistenFn> {
+    return listen("create-target", () => cb());
+  },
+  /** The one pet created, edited or rehomed, with the form's view of the save. */
+  emitPetsChanged(payload: PetsChanged): Promise<void> {
+    return emit("pets-changed", payload);
+  },
+  /** The payload is untrusted until `planChange` checks it. */
+  onPetsChanged(cb: (payload: unknown) => void): Promise<UnlistenFn> {
+    return listen<unknown>("pets-changed", (event) => cb(event.payload));
+  },
   onCursor(cb: (p: Point) => void): Promise<UnlistenFn> {
     return listen<Point>("cursor", (event) => cb(event.payload));
   },
   onFloorChanged(cb: (floor: Floor) => void): Promise<UnlistenFn> {
     return listen<Floor>("floor-changed", (event) => cb(event.payload));
+  },
+  /** Seconds since the user's last keyboard or mouse input (0 if unknown). */
+  userIdleSeconds(): Promise<number> {
+    return invoke<number>("user_idle_seconds");
+  },
+  /** Rebuild the menu bar menu's per-pet submenus. */
+  setMenuPets(pets: MenuPet[]): Promise<void> {
+    return invoke<void>("set_menu_pets", { pets });
+  },
+  /** Set the menu's Nap time check mark (on start, from the save). */
+  setNapTime(on: boolean): Promise<void> {
+    return invoke<void>("set_nap_time", { on });
+  },
+  onNapTime(cb: (on: boolean) => void): Promise<UnlistenFn> {
+    return listen<{ on: boolean }>("nap-time", (event) => cb(event.payload.on));
+  },
+  onCallOver(cb: (id: string) => void): Promise<UnlistenFn> {
+    return listen<{ id: string }>("call-over", (event) => cb(event.payload.id));
+  },
+  /** Menu "New pet…". */
+  onMenuNewPet(cb: () => void): Promise<UnlistenFn> {
+    return listen("menu-new-pet", () => cb());
+  },
+  onMenuEditPet(cb: (id: string) => void): Promise<UnlistenFn> {
+    return listen<{ id: string }>("menu-edit-pet", (event) => cb(event.payload.id));
+  },
+  onMenuRehomePet(cb: (id: string) => void): Promise<UnlistenFn> {
+    return listen<{ id: string }>("menu-rehome-pet", (event) => cb(event.payload.id));
   },
 };
