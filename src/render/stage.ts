@@ -3,7 +3,7 @@ import { TUNING } from '../brain/tuning';
 import type { Pet } from '../brain/types';
 import type { Body } from '../sim/world';
 import { PART_NAMES, type PartName } from './artNames';
-import type { FloatingZ } from './effects';
+import type { FloatingZ, Heart } from './effects';
 import { CAT_BOX, CELL, RIG, type RigFrame } from './rig';
 
 /** How long two poses cross-fade so a cat never snaps between them. */
@@ -13,6 +13,10 @@ const Z_SHADOW = 0x2a2140;
 const Z_ROWS = ['####', '..#.', '.#..', '####'] as const;
 /** Size of one "z" pixel in art pixels. */
 const Z_BLOCK = 2;
+const HEART_LIGHT = 0xff6f91;
+const HEART_SHADOW = 0x5c1f36;
+const HEART_ROWS = ['.#.#.', '#####', '#####', '.###.', '..#..'] as const;
+const HEART_BLOCK = 2;
 
 interface Look {
   root: Container;
@@ -28,16 +32,19 @@ interface Entry {
   fadeStart: number;
   facing: 1 | -1;
   fx: Container;
+  hearts: Container;
   sheet: Spritesheet;
 }
 
-function zGlyph(): GraphicsContext {
+/** A centred pixel glyph from '#' rows, with a one-block drop shadow. */
+function pixelGlyph(rows: readonly string[], block: number, light: number, shadow: number): GraphicsContext {
   const g = new GraphicsContext();
-  const half = (Z_ROWS.length * Z_BLOCK) / 2;
-  for (const [colour, shift] of [[Z_SHADOW, Z_BLOCK], [Z_LIGHT, 0]] as const) {
-    Z_ROWS.forEach((row, y) => {
+  const halfW = ((rows[0]?.length ?? 0) * block) / 2;
+  const halfH = (rows.length * block) / 2;
+  for (const [colour, shift] of [[shadow, block], [light, 0]] as const) {
+    rows.forEach((row, y) => {
       [...row].forEach((ch, x) => {
-        if (ch === '#') g.rect(x * Z_BLOCK - half + shift, y * Z_BLOCK - half + shift, Z_BLOCK, Z_BLOCK);
+        if (ch === '#') g.rect(x * block - halfW + shift, y * block - halfH + shift, block, block);
       });
     });
     g.fill(colour);
@@ -49,7 +56,8 @@ function zGlyph(): GraphicsContext {
 export class PetStage {
   private readonly layer = new Container();
   private readonly entries = new Map<string, Entry>();
-  private readonly glyph = zGlyph();
+  private readonly zGlyph = pixelGlyph(Z_ROWS, Z_BLOCK, Z_LIGHT, Z_SHADOW);
+  private readonly heartGlyph = pixelGlyph(HEART_ROWS, HEART_BLOCK, HEART_LIGHT, HEART_SHADOW);
 
   constructor(app: Application) {
     app.stage.addChild(this.layer);
@@ -63,10 +71,12 @@ export class PetStage {
     looks[1].root.visible = false;
     const fx = new Container();
     fx.scale.set(TUNING.renderScale);
-    outer.addChild(looks[0].root, looks[1].root, fx);
+    const hearts = new Container();
+    hearts.scale.set(TUNING.renderScale);
+    outer.addChild(looks[0].root, looks[1].root, fx, hearts);
     this.layer.addChild(outer);
     this.entries.set(pet.id, {
-      outer, looks, active: 0, shown: null, fadeStart: 0, facing: 1, fx, sheet: atlas,
+      outer, looks, active: 0, shown: null, fadeStart: 0, facing: 1, fx, hearts, sheet: atlas,
     });
   }
 
@@ -123,14 +133,30 @@ export class PetStage {
   drawZs(id: string, zs: readonly FloatingZ[]): void {
     const e = this.entries.get(id);
     if (!e) return;
-    while (e.fx.children.length < zs.length) e.fx.addChild(new Graphics(this.glyph));
-    e.fx.children.forEach((child, i) => {
-      const z = zs[i];
-      child.visible = z !== undefined;
-      if (!z) return;
-      child.position.set(z.x * e.facing, z.y);
-      child.alpha = z.alpha;
-      child.scale.set(z.scale);
+    this.drawGlyphs(e.fx, this.zGlyph, zs, e.facing);
+  }
+
+  /** The rising hearts of a purring pet; an empty list clears them. */
+  drawHearts(id: string, hearts: readonly Heart[]): void {
+    const e = this.entries.get(id);
+    if (!e) return;
+    this.drawGlyphs(e.hearts, this.heartGlyph, hearts, e.facing);
+  }
+
+  private drawGlyphs(
+    layer: Container,
+    glyph: GraphicsContext,
+    items: readonly { x: number; y: number; alpha: number; scale?: number }[],
+    facing: 1 | -1,
+  ): void {
+    while (layer.children.length < items.length) layer.addChild(new Graphics(glyph));
+    layer.children.forEach((child, i) => {
+      const it = items[i];
+      child.visible = it !== undefined;
+      if (!it) return;
+      child.position.set(it.x * facing, it.y);
+      child.alpha = it.alpha;
+      child.scale.set(it.scale ?? 1);
     });
   }
 
