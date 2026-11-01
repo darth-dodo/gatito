@@ -31,9 +31,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Pet art uses a 96 by 96 grid shown at 1x instead of 48 by 48 at 2x, so generated art keeps its detail at the same size on screen; the `sit` pose is drawn without ears and eyes, which are layered on ([#14](https://github.com/darth-dodo/windowsill/pull/14)).
 - CI runs the app build in parallel and as a fast debug compile on pull requests; the full release bundle runs on main.
+- Walking cats use a generated six-frame walk cycle by default (coats without one fall back to the puppet walk), and the puppet parts are cut from the single reference cat with `npm run art:cut`, so parts line up with no seams (PR_LINK).
+- Smoother, lighter drawing: pets are drawn at a position interpolated between physics steps, the overlay canvas renders a quarter of the pixels on Retina while staying crisp, and the cursor poll no longer asks the main thread for the scale factor; `?debug=1` or `WINDOWSILL_DEBUG=1` shows a frame-time readout (PR_LINK).
 
 ### Fixed
 
+- Puppet seams and the light magenta halo around the cat outline; the sleeping "z" now starts above the head, and pose cross-fades no longer turn the cat see-through halfway (PR_LINK).
 - Petting works in the real app: strokes are read from the system cursor because macOS does not send mouse moves to the unfocused overlay.
 
 [Unreleased]: https://github.com/darth-dodo/windowsill/commits/main
