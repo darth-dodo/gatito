@@ -9,7 +9,7 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium, type Page } from 'playwright';
+import { chromium, type Browser, type Page } from 'playwright';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const OUT_DIR = join(ROOT, 'docs/assets');
@@ -18,6 +18,9 @@ const RECORD_MS = 25_000;
 /** Matches the Dock geometry in demo.html: the floor sits this far above the bottom. */
 const FLOOR_FROM_BOTTOM_PX = 80;
 const FFMPEG = process.env.FFMPEG ?? 'ffmpeg';
+/** The demo query; override with DEMO_SEED and DEMO_SPEED to try other runs. */
+const SEED = process.env.DEMO_SEED ?? '7';
+const SPEED = process.env.DEMO_SPEED ?? '3';
 
 function run(cmd: string, args: string[]): void {
   const r = spawnSync(cmd, args, { cwd: ROOT, stdio: 'inherit' });
@@ -72,31 +75,34 @@ async function main(): Promise<void> {
     stdio: 'ignore',
     detached: true,
   });
-  const killPreview = (): void => {
-    if (preview.pid !== undefined && preview.exitCode === null) {
+  const videoDir = mkdtempSync(join(tmpdir(), 'windowsill-demo-'));
+  // Synchronous, so it also runs from the 'exit' event after Ctrl+C.
+  const cleanUp = (): void => {
+    if (preview.pid !== undefined) {
       try {
         process.kill(-preview.pid, 'SIGTERM');
       } catch {
-        // Already gone.
+        // ESRCH: the preview group is already gone.
       }
     }
+    rmSync(videoDir, { recursive: true, force: true });
   };
-  process.once('exit', killPreview);
+  process.once('exit', cleanUp);
   process.once('SIGINT', () => process.exit(130));
 
-  const videoDir = mkdtempSync(join(tmpdir(), 'windowsill-demo-'));
+  let browser: Browser | undefined;
   try {
     const base = `http://127.0.0.1:${port}`;
     await waitForServer(`${base}/demo.html`);
 
-    const browser = await chromium.launch();
+    browser = await chromium.launch();
     const context = await browser.newContext({
       viewport: VIEWPORT,
       recordVideo: { dir: videoDir, size: VIEWPORT },
     });
     const page = await context.newPage();
     page.on('pageerror', (e) => console.error('page error:', e.message));
-    await page.goto(`${base}/demo.html?speed=3&seed=7`);
+    await page.goto(`${base}/demo.html?speed=${SPEED}&seed=${SEED}`);
     await page.waitForSelector('#pets canvas');
     await page.mouse.move(VIEWPORT.width * 0.5, VIEWPORT.height * 0.3);
 
@@ -127,8 +133,8 @@ async function main(): Promise<void> {
     ]);
     console.log(`demo.mp4 ${sizeMb(mp4)}, demo.gif ${sizeMb(gif)}`);
   } finally {
-    rmSync(videoDir, { recursive: true, force: true });
-    killPreview();
+    await browser?.close().catch(() => {});
+    cleanUp();
   }
 }
 

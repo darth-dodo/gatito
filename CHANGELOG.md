@@ -21,10 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Art pipeline: `npm run art` turns GenAI pixel art (12 cut-out parts and 8 key poses on a magenta background) into PixiJS sprite sheets, recolours orange tabby into black, white and grey, and ships readable placeholder cats until real art lands; CI checks the committed sheets are current by comparing pixels ([#13](https://github.com/darth-dodo/windowsill/pull/13)).
 - Pets on screen: PixiJS cut-out puppets that walk, sit, groom, stretch, loaf, nap with a floating "z" and blink, with ears and tail showing mood, smooth cross-fades between poses, and a sleeping cat that stretches before stepping out from under a still cursor ([#14](https://github.com/darth-dodo/windowsill/pull/14)).
 - Claude Code project skills for syncing stacked PRs, cutting a release and adding pet art, plus a repo `CLAUDE.md`; `npm run check` now runs every CI gate locally.
+- Pet art generator (`npm run art:generate`, OpenRouter image model) and the first orange tabby set: reference cat, 12 puppet parts and 8 key poses in `art/source/cat/orange-tabby/`.
 - Browser demo page (`demo.html`) that runs the real pets on a pretend Mac desktop, with `?speed=` and `?seed=` options, and `npm run demo:record`, which films it into `docs/assets/demo.mp4` and `docs/assets/demo.gif` for the README.
+- Petting and handling: stroke a pet with the cursor and it purrs with rising hearts, keep going on a happy pet and it rolls belly up, drag it at least 4 px to lift it by the scruff, release and it falls and lands on its feet; a lost mouse-up can never leave a pet stuck held ([#17](https://github.com/darth-dodo/windowsill/pull/17)).
 
 ### Changed
 
 - Pet art uses a 96 by 96 grid shown at 1x instead of 48 by 48 at 2x, so generated art keeps its detail at the same size on screen; the `sit` pose is drawn without ears and eyes, which are layered on ([#14](https://github.com/darth-dodo/windowsill/pull/14)).
+- CI runs the app build in parallel and as a fast debug compile on pull requests; the full release bundle runs on main.
 
 [Unreleased]: https://github.com/darth-dodo/windowsill/commits/main
