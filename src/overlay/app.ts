@@ -11,6 +11,7 @@ import { floatingZs, heartBurst, risingHearts } from '../render/effects';
 import { CAT_BOX, rigPose } from '../render/rig';
 import { PetStage } from '../render/stage';
 import { PetController } from '../sim/controller';
+import { NapTime, callOverX } from './napTime';
 import { World, type Body } from '../sim/world';
 import { HELD_HITBOX_PAD_PX, InputRouter, cursorEscapedHold } from './input';
 
@@ -37,6 +38,8 @@ export interface PetOptions {
   seed?: number;
   /** Multiplies the clamped frame delta for the simulation only. Defaults to 1. */
   timeScale?: number;
+  /** Nap time as saved; when on, the pets start hidden. Defaults to off. */
+  napTime?: boolean;
   container: HTMLElement;
 }
 
@@ -62,6 +65,11 @@ function spawnBody(id: string, floor: Floor, index: number, count: number): Body
     width,
     height,
   };
+}
+
+/** What a pet shows while Nap time has it curled up. */
+function curledAnim(t: number): { name: 'nap'; t: number } {
+  return { name: 'nap', t };
 }
 
 /** A newcomer drops in from the top of the floor at `x01` (0 to 1) across it, and falls. */
@@ -152,6 +160,10 @@ export interface RunningPets {
   removePet(id: string): void;
   /** Applies a new name, colour or style; mood and learning stay as they are. */
   updatePet(pet: Pet): Promise<void>;
+  /** Nap time: the cats curl up and fade out (mood clock stops), or fade back in. */
+  setNapTime(on: boolean): void;
+  /** Walks the pet to the middle of the screen. */
+  callOver(id: string): void;
 }
 
 /** Runs the pets (brain, world, controllers and PixiJS stage) inside `container`, fed by `host`. */
@@ -176,6 +188,8 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
   const stage = new PetStage(app);
   const pushHitboxes = hitboxPusher(host);
   const pets: Living[] = [];
+  const nap = new NapTime(options.napTime ?? false);
+  let napT = 0;
   /** Ids being added; removing one before its art loads cancels it. */
   const arriving = new Set<string>();
   let spawned = 0;
@@ -216,7 +230,8 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
     // The one source of strokes: the webview never sees plain mouse moves in the real overlay.
     host.onCursor((p) => {
       cursor = p;
-      router.cursorMove(p.x, p.y, performance.now() / 1000);
+      // Curled or hidden pets cannot be stroked.
+      if (!nap.curled) router.cursorMove(p.x, p.y, performance.now() / 1000);
     }),
     host.onFloorChanged((f) => {
       floor = f;
@@ -227,14 +242,17 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
   app.ticker.add((ticker) => {
     const dt = clampFrameDelta(ticker.deltaMS / 1000) * timeScale;
     const userIdleSeconds = host.userIdleSeconds();
-    const active = activeSeconds(dt, { userIdleSeconds, napTime: false });
+    const active = activeSeconds(dt, { userIdleSeconds, napTime: nap.on });
     const ctx = { cursor, userIdleSeconds, floor };
 
+    nap.update(dt);
     const heldId = router.heldId();
     const held = heldId === null ? undefined : pets.find((p) => p.body.id === heldId);
-    if (held && cursorEscapedHold(held.body, cursor)) router.release();
+    // A pet cannot stay in your hand once Nap time hides it.
+    if (held && (nap.hidden || cursorEscapedHold(held.body, cursor))) router.release();
 
-    for (const p of pets) p.controller.update(dt, ctx);
+    if (!nap.curled) for (const p of pets) p.controller.update(dt, ctx);
+    else for (const p of pets) if (!p.body.held) p.body.vx = 0;
     world.step(dt);
 
     const nowSeconds = performance.now() / 1000;
@@ -246,16 +264,24 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
           pairings: fade(c.pet.pairings, active),
         });
       }
-      const { name, t } = c.anim();
+      const { name, t } = nap.curled ? curledAnim(napT) : c.anim();
+      stage.setAlpha(c.pet.id, nap.alpha);
       stage.draw(c.pet.id, b, rigPose(name, t, c.pet.mood));
       stage.drawZs(c.pet.id, name === 'nap' || name === 'cuddle-nap' ? floatingZs(t) : []);
       const tapAge = nowSeconds - (tappedAt.get(c.pet.id) ?? -Infinity);
       stage.drawHearts(c.pet.id, name === 'purr' ? risingHearts(t) : heartBurst(tapAge));
     }
-    pushHitboxes(world.bodies(), performance.now(), router.heldId());
+    napT = nap.curled ? napT + dt : 0;
+    pushHitboxes(nap.hidden ? [] : world.bodies(), performance.now(), router.heldId());
   });
 
   return {
+    setNapTime: (on) => nap.setOn(on),
+    callOver(id) {
+      const p = pets.find((q) => q.controller.pet.id === id);
+      const x = p ? callOverX(nap, floor, p.body.width) : null;
+      if (p && x !== null) p.controller.start({ kind: 'go-to', x });
+    },
     stop() {
       offPointer();
       for (const off of unlisten) off();

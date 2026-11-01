@@ -1,15 +1,25 @@
 import { ipc } from '../ipc';
 import { startPets, type PetHost } from './app';
+import { createWindowTarget, menuPets, withNapTime, type MenuRequest } from './menu';
 import { Autosave, interpretSave, planChange } from './persistence';
 
-/** The Tauri overlay: floor, cursor and hit boxes come from Rust. */
+/** How often the OS idle time is read. */
+const IDLE_POLL_MS = 5000;
+
+let userIdle = 0;
+function pollIdle(): void {
+  ipc.userIdleSeconds().then((s) => { userIdle = s; }, () => { userIdle = 0; });
+}
+pollIdle();
+setInterval(pollIdle, IDLE_POLL_MS);
+
+/** The Tauri overlay: floor, cursor, idle time and hit boxes come from Rust. */
 const tauriHost: PetHost = {
   getFloor: () => ipc.getFloor(),
   onFloorChanged: (cb) => ipc.onFloorChanged(cb),
   onCursor: (cb) => ipc.onCursor(cb),
   setHitboxes: (rects) => ipc.setHitboxes(rects),
-  /** Task 14 reads the OS idle time here. */
-  userIdleSeconds: () => 0,
+  userIdleSeconds: () => userIdle,
 };
 
 async function main(): Promise<void> {
@@ -19,15 +29,20 @@ async function main(): Promise<void> {
     console.warn('Save file could not be read; moved aside as windowsill.json.bad');
     await ipc.quarantineSave();
   }
-  const settings = loaded.save.settings;
+  let settings = loaded.save.settings;
 
-  const running = await startPets(tauriHost, { pets: loaded.save.pets, container: document.body });
+  const running = await startPets(tauriHost, {
+    pets: loaded.save.pets,
+    napTime: settings.napTime,
+    container: document.body,
+  });
   const autosave = new Autosave(
     () => ({ version: 1, pets: running.pets(), settings }),
     (t) => ipc.writeSave(t),
     loaded.quarantine || text === null ? null : loaded.save,
   );
   autosave.start();
+  const refreshMenu = (): Promise<void> => ipc.setMenuPets(menuPets(running.pets()));
 
   await ipc.onPetsChanged((payload) => {
     // Apply only the one change the form made; never remove a pet for being absent.
@@ -39,15 +54,34 @@ async function main(): Promise<void> {
     else applied = running.addPet(action.pet);
     void applied
       .catch((e: unknown) => console.error('Could not apply the pet change', e))
-      .finally(() => autosave.flush());
+      .finally(() => {
+        void autosave.flush();
+        void refreshMenu();
+      });
   });
+
+  const openCreate = (request: MenuRequest): void => {
+    void ipc.openCreateWindow(createWindowTarget(request));
+  };
+  await Promise.all([
+    ipc.onNapTime((on) => {
+      running.setNapTime(on);
+      settings = withNapTime(settings, on);
+      void autosave.flush();
+    }),
+    ipc.onCallOver((id) => running.callOver(id)),
+    ipc.onMenuNewPet(() => openCreate({ kind: 'new-pet' })),
+    ipc.onMenuEditPet((id) => openCreate({ kind: 'edit-pet', id })),
+    ipc.onMenuRehomePet((id) => openCreate({ kind: 'rehome-pet', id })),
+  ]);
+  await Promise.all([ipc.setNapTime(settings.napTime), refreshMenu()]);
 
   await ipc.onQuitRequested(() => {
     autosave.stop();
     void autosave.flush().finally(() => ipc.quitReady());
   });
 
-  if (loaded.firstRun) await ipc.openCreateWindow(null);
+  if (loaded.firstRun) openCreate({ kind: 'new-pet' });
 }
 
 void main();

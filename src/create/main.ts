@@ -94,8 +94,8 @@ async function startPreview(container: HTMLElement, mood: Mood): Promise<(pet: P
 async function main(): Promise<void> {
   const win = getCurrentWindow();
   const save = await currentSave();
-  const editId = await ipc.createWindowPet();
-  const editing = save.pets.find((p) => p.id === editId) ?? null;
+  const target = await ipc.createWindowTarget();
+  const editing = save.pets.find((p) => p.id === target.petId) ?? null;
 
   const form = el<HTMLFormElement>('pet-form');
   const species = el<HTMLSelectElement>('species');
@@ -190,12 +190,13 @@ async function main(): Promise<void> {
     }
   });
 
-  rehome.addEventListener('click', () => {
+  const askRehome = (): void => {
     if (!editing) return;
     el('confirm-text').textContent = `Rehome ${editing.name}? They will leave your desktop for good.`;
     el('confirm-keep').textContent = `Keep ${editing.name}`;
     dialog.showModal();
-  });
+  };
+  rehome.addEventListener('click', askRehome);
   el('confirm-keep').addEventListener('click', () => dialog.close());
   el('confirm-go').addEventListener('click', () => {
     dialog.close();
@@ -207,6 +208,8 @@ async function main(): Promise<void> {
   render();
   refreshPreview();
   name.focus();
+  // Menu "Rehome…" opens the window straight on the confirmation.
+  if (target.rehome) askRehome();
 }
 
 void main();
