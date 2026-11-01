@@ -50,9 +50,31 @@ If you run [Ollama](https://ollama.com) with a Gemma model, cats get in-characte
 
 No accounts, no telemetry, no analytics. Nothing leaves your computer except, if you turn Gemma on, calls to Ollama on your own machine. Cats never look at your screen, your windows' contents or your typing.
 
+## Install
+
+Windowsill is macOS 13 or newer.
+
+1. Download the `.dmg` from [GitHub Releases](https://github.com/darth-dodo/windowsill/releases) once a release is published (releases start as drafts), or build it yourself with `npm ci && npm run tauri build` (Rust and Node needed; the `.dmg` lands in `src-tauri/target/release/bundle/dmg/`).
+2. Open the `.dmg` and drag Windowsill to Applications.
+3. The app is **unsigned**, so the first launch needs a right-click on Windowsill, then **Open**, then **Open** again in the warning. After that it opens normally.
+
+There is no Dock icon; Windowsill lives in the menu bar.
+
+## Using it
+
+- **Menu bar icon**: New pet, per-pet Edit, Call over and Rehome, **Nap time** (pets rest and moods stop changing, handy in meetings) and Launch at login.
+- **Petting**: move the cursor back and forth over a pet, no click needed. It purrs and hearts rise. Tapping also pets it.
+- **Drag**: pick a pet up by the scruff and drop it anywhere; it lands on its feet.
+- **Tricks**: right-click a pet for the cue ring, pick a cue, then pet it if it guessed right. A few rounds in, the cue means the trick.
+- Clicks pass straight through to your apps everywhere except on a pet.
+
+### Adding your own art
+
+Drop GenAI pixel art into `art/source/<species>/<coat>/` (12 parts and 8 key poses, exact file names matter), then run `npm run art` to rebuild the sprite sheets. The [adding-pet-art skill](.claude/skills/adding-pet-art/SKILL.md) has the file list, sizes and troubleshooting. Before a release, work through the [macOS release checklist](docs/release-checklist.md).
+
 ## Status
 
-**Designing, not built yet.** The product spec and the Phase 1 plan are done; code comes next.
+**Phase 1 is complete.** Pixel cats, click-through, petting, tricks, mood, saved pets, the menu bar menu and the macOS build are in. Phase 2 (dogs and more) is next.
 
 | Phase | Scope |
 |-------|-------|
@@ -73,4 +95,5 @@ Push a `vX.Y.Z` tag. The release workflow builds a universal `.dmg` (Apple Silic
 ## Docs
 
 - [Product specification](docs/product.md): what Windowsill does, precisely
+- [macOS release checklist](docs/release-checklist.md): the manual checks before a release
 - [Phase 1 implementation plan](docs/superpowers/plans/2026-10-31-windowsill-phase-1.md): the build, task by task
