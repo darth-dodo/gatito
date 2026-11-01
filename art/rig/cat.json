@@ -1,6 +1,6 @@
 {
   "cell": 96,
-  "note": "Parts are drawn in place in the assembled standing cat (cut from reference.png by scripts/art/cut-parts.ts). anchor is the pivot in 0..1 cell coordinates. offset is the pivot position in cell pixels relative to the body pivot. z is draw order, low first.",
+  "note": "Parts are drawn in place in the assembled standing cat (cut from reference.png by scripts/art/cut-parts.ts). anchor is the pivot in 0..1 cell coordinates. offset is the pivot position in cell pixels relative to the body pivot. z is draw order, low first. poseTail places the tail base on each key pose (x, y in cell pixels from the body pivot), with its rest rotation and how much it moves. sitOverlay places the ears and eyes layered on the sit pose.",
   "parts": {
     "body": {
       "anchor": [
@@ -134,5 +134,73 @@
         -4
       ]
     }
+  },
+  "poseTail": {
+    "sit": {
+      "x": -22,
+      "y": 22,
+      "rotation": 1.1,
+      "swing": 1
+    },
+    "loaf": {
+      "x": -30,
+      "y": 8,
+      "rotation": 1.2,
+      "swing": 0.6
+    },
+    "sleep-curl": {
+      "x": 26,
+      "y": 16,
+      "rotation": 1,
+      "swing": 0.3
+    },
+    "belly-up": {
+      "x": -36,
+      "y": 4,
+      "rotation": 1.1,
+      "swing": 1
+    },
+    "stretch": {
+      "x": -30,
+      "y": -21,
+      "rotation": 2.3,
+      "swing": 0.6
+    },
+    "groom": {
+      "x": -29,
+      "y": 22,
+      "rotation": 1.1,
+      "swing": 0.6
+    },
+    "sit-up": {
+      "x": -17,
+      "y": 26,
+      "rotation": 1.1,
+      "swing": 1
+    },
+    "dangle": {
+      "x": -11,
+      "y": 8,
+      "rotation": -0.56,
+      "swing": 1.4
+    }
+  },
+  "sitOverlay": {
+    "ear-near": [
+      24,
+      -40
+    ],
+    "ear-far": [
+      31,
+      -44
+    ],
+    "eyes-open": [
+      33,
+      -37
+    ],
+    "eyes-closed": [
+      33,
+      -37
+    ]
   }
 }

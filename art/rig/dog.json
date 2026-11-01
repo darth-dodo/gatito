@@ -1,0 +1,206 @@
+{
+  "cell": 96,
+  "note": "Parts are drawn in place in the assembled standing dog. anchor is the pivot in 0..1 cell coordinates. offset is the pivot position in cell pixels relative to the body pivot. z is draw order, low first. poseTail places the tail base on each key pose (x, y in cell pixels from the body pivot), with its rest rotation and how much it moves. sitOverlay places the ears and eyes layered on the sit pose.",
+  "parts": {
+    "body": {
+      "anchor": [
+        0.4583,
+        0.5833
+      ],
+      "z": 4,
+      "offset": [
+        0,
+        0
+      ]
+    },
+    "head": {
+      "anchor": [
+        0.75,
+        0.3958
+      ],
+      "z": 5,
+      "offset": [
+        28,
+        -18
+      ]
+    },
+    "ear-near": {
+      "anchor": [
+        0.7083,
+        0.2917
+      ],
+      "z": 6,
+      "offset": [
+        24,
+        -28
+      ]
+    },
+    "ear-far": {
+      "anchor": [
+        0.7917,
+        0.2708
+      ],
+      "z": 3,
+      "offset": [
+        32,
+        -30
+      ]
+    },
+    "eyes-open": {
+      "anchor": [
+        0.8333,
+        0.375
+      ],
+      "z": 7,
+      "offset": [
+        36,
+        -20
+      ]
+    },
+    "eyes-closed": {
+      "anchor": [
+        0.8333,
+        0.375
+      ],
+      "z": 7,
+      "offset": [
+        36,
+        -20
+      ]
+    },
+    "tail": {
+      "anchor": [
+        0.1875,
+        0.5208
+      ],
+      "z": 0,
+      "offset": [
+        -26,
+        -6
+      ]
+    },
+    "leg-front-near": {
+      "anchor": [
+        0.6458,
+        0.6667
+      ],
+      "z": 9,
+      "offset": [
+        18,
+        8
+      ]
+    },
+    "leg-front-far": {
+      "anchor": [
+        0.7292,
+        0.6667
+      ],
+      "z": 2,
+      "offset": [
+        26,
+        8
+      ]
+    },
+    "leg-back-near": {
+      "anchor": [
+        0.2812,
+        0.6667
+      ],
+      "z": 8,
+      "offset": [
+        -17,
+        8
+      ]
+    },
+    "leg-back-far": {
+      "anchor": [
+        0.375,
+        0.6667
+      ],
+      "z": 1,
+      "offset": [
+        -8,
+        8
+      ]
+    },
+    "paw-raised": {
+      "anchor": [
+        0.6458,
+        0.625
+      ],
+      "z": 10,
+      "offset": [
+        18,
+        4
+      ]
+    }
+  },
+  "poseTail": {
+    "sit": {
+      "x": -22,
+      "y": 24,
+      "rotation": -1.45,
+      "swing": 1
+    },
+    "loaf": {
+      "x": -18,
+      "y": 4,
+      "rotation": -2.38,
+      "swing": 0.15
+    },
+    "sleep-curl": {
+      "x": -30,
+      "y": 16,
+      "rotation": -1.45,
+      "swing": 0.3
+    },
+    "belly-up": {
+      "x": -26,
+      "y": 12,
+      "rotation": -1.45,
+      "swing": 1
+    },
+    "stretch": {
+      "x": -28,
+      "y": -12,
+      "rotation": 0,
+      "swing": 1
+    },
+    "groom": {
+      "x": -24,
+      "y": 24,
+      "rotation": -1.45,
+      "swing": 0.6
+    },
+    "sit-up": {
+      "x": -22,
+      "y": 24,
+      "rotation": -1.45,
+      "swing": 1
+    },
+    "dangle": {
+      "x": -2,
+      "y": 22,
+      "rotation": 3,
+      "swing": 1.4
+    }
+  },
+  "sitOverlay": {
+    "ear-near": [
+      10,
+      -38
+    ],
+    "ear-far": [
+      18,
+      -40
+    ],
+    "eyes-open": [
+      22,
+      -30
+    ],
+    "eyes-closed": [
+      22,
+      -30
+    ]
+  }
+}
