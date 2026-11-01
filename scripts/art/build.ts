@@ -36,7 +36,7 @@ export function isNosePink(r: number, g: number, b: number): boolean {
   return near(GENERATED_NOSE) || near(NOSE);
 }
 
-/** Removes the magenta key, snaps to the art grid (nearest neighbour) and limits to 16 colours. */
+/** Removes the magenta key, snaps to the art grid (nearest neighbour) and limits to 16 colours plus the nose. */
 export async function prepare(file: string, name: string): Promise<Buffer> {
   const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   if (info.width !== info.height) {
