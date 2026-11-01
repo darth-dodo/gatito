@@ -146,7 +146,55 @@ describe('writePlaceholders', () => {
   });
 });
 
+describe('dog placeholders', () => {
+  it('cover every name, all visible and distinct, and differ from the cat', async () => {
+    const dogSrc = join(root, 'dog');
+    const catSrc = join(root, 'cat');
+    await writePlaceholders('dog', 'golden', dogSrc);
+    await writePlaceholders('cat', 'orange-tabby', catSrc);
+    const seen = new Set<string>();
+    for (const name of [...PART_NAMES, ...POSE_NAMES]) {
+      const dog = readFileSync(join(dogSrc, `${name}.png`));
+      const { data } = await sharp(dog).raw().toBuffer({ resolveWithObject: true });
+      let inked = 0;
+      for (let i = 0; i < data.length; i += 3) if (!(data[i] === 255 && data[i + 1] === 0 && data[i + 2] === 255)) inked++;
+      expect(inked, name).toBeGreaterThan(8);
+      seen.add(dog.toString('base64'));
+      // body and every pose look different from the cat's (a lone eye may coincide in shape, never in colour).
+      expect(dog.equals(readFileSync(join(catSrc, `${name}.png`))), name).toBe(false);
+    }
+    expect(seen.size).toBe(PART_NAMES.length + POSE_NAMES.length);
+  });
+
+  it('packs into a dog sheet with anchors from the dog rig', async () => {
+    const src = join(root, 'dog');
+    await writePlaceholders('dog', 'brown', src);
+    const outDir = join(root, 'out');
+    expect((await buildAtlas('dog', 'brown', src, outDir)).missing).toEqual([]);
+    const atlas = JSON.parse(readFileSync(join(outDir, 'dog-brown.json'), 'utf8'));
+    const rig = JSON.parse(readFileSync('art/rig/dog.json', 'utf8'));
+    expect(rig.cell).toBe(ART_CELL);
+    for (const name of PART_NAMES) {
+      expect(atlas.frames[name].anchor).toEqual({ x: rig.parts[name].anchor[0], y: rig.parts[name].anchor[1] });
+    }
+  });
+});
+
 describe('npm run art', () => {
+  it('derives black, white and brown dogs from a golden set, and nothing else', async () => {
+    const src = join(root, 'source');
+    await writeFullSet(join(src, 'dog', 'golden'));
+    const out = join(root, 'out');
+    const log = execFileSync('node_modules/.bin/tsx', ['scripts/art/build.ts', '--src', src, '--out', out], {
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
+    expect(log).toMatch(/dog\/brown: recoloured from golden/);
+    for (const coat of ['golden', 'black', 'white', 'brown']) expect(existsSync(join(out, `dog-${coat}.json`)), coat).toBe(true);
+    for (const coat of ['grey', 'spotted', 'tricolour', 'husky-grey']) expect(existsSync(join(out, `dog-${coat}.json`)), coat).toBe(false);
+    expect(existsSync(join(out, 'cat-black.json'))).toBe(false);
+  }, 30_000);
+
   it('derived coats from a magenta-background tabby have a transparent background', async () => {
     const src = join(root, 'source');
     await writeFullSet(join(src, 'cat', 'orange-tabby'));

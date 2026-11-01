@@ -1,6 +1,6 @@
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
-import { COAT_PALETTES, KEPT_COLOURS, ORANGE_PALETTE, recolour } from '../../scripts/art/recolour';
+import { COAT_PALETTES, GOLDEN_PALETTE, KEPT_COLOURS, ORANGE_PALETTE, recolour } from '../../scripts/art/recolour';
 import { toPng, type Rgb } from './fixtures/images';
 
 async function pixelsOf(png: Buffer): Promise<Rgb[]> {
@@ -53,5 +53,27 @@ describe('recolour', () => {
       /calico/,
     );
     await expect(recolour(await toPng([[0, 0, 0]], 1), 'black', 'grey')).rejects.toThrow(/black/);
+  });
+
+  it('maps golden to brown, black and white for dogs, keeping outline, eyes and nose', async () => {
+    for (const to of ['brown', 'black', 'white'] as const) {
+      const out = await pixelsOf(await recolour(await toPng([...GOLDEN_PALETTE, ...KEPT_COLOURS], 9), 'golden', to));
+      expect(out.slice(0, 5), to).toEqual(COAT_PALETTES[to]);
+      expect(out.slice(5, 9), to).toEqual(KEPT_COLOURS);
+    }
+  });
+
+  it('turns edge pixels blended with the magenta key into the key, so the build drops them', async () => {
+    const halo: Rgb = [214, 52, 190];
+    const out = await pixelsOf(await recolour(await toPng([halo, GOLDEN_PALETTE[2]!], 2), 'golden', 'brown'));
+    expect(out[0]).toEqual([255, 0, 255]);
+    expect(out[1]).toEqual(COAT_PALETTES.brown[2]);
+  });
+
+  it('derives each species only its own plain coats', async () => {
+    const px = await toPng([[0, 0, 0]], 1);
+    await expect(recolour(px, 'golden', 'grey')).rejects.toThrow(/dog to grey/);
+    await expect(recolour(px, 'orange-tabby', 'brown')).rejects.toThrow(/cat to brown/);
+    await expect(recolour(px, 'golden', 'spotted')).rejects.toThrow(/spotted/);
   });
 });

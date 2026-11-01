@@ -1,6 +1,7 @@
-import rigJson from '../../art/rig/cat.json';
+import catRig from '../../art/rig/cat.json';
+import dogRig from '../../art/rig/dog.json';
 import type { BehaviourName } from '../brain/behaviour';
-import type { Mood, Trick } from '../brain/types';
+import type { Mood, Species, Trick } from '../brain/types';
 import { ART_CELL, PART_NAMES, WALK_FRAME_NAMES, type PartName, type PoseName, type WalkFrameName } from './artNames';
 
 /** Every animation a pet can play: its behaviours, the tricks, and the handling and petting moments. */
@@ -24,7 +25,7 @@ export interface PartPose {
 }
 
 /**
- * One drawn moment. With `pose: 'puppet'` the parts build the standing cat. With a key pose,
+ * One drawn moment. With `pose: 'puppet'` the parts build the standing pet. With a key pose,
  * `parts.body` places the pose image and the other parts are layered over it.
  * `flipX` mirrors relative to the body's facing; `rotation` turns the whole pet about the body pivot.
  */
@@ -41,11 +42,44 @@ interface RigPart {
   offset: [number, number];
 }
 
+/** Where the tail base sits on a key pose, its rest rotation (the standing pet's tail is 0) and how much it moves. */
+interface PoseTail {
+  x: number;
+  y: number;
+  rotation: number;
+  swing: number;
+  /** The pose image already has its tail drawn in, so the tail part is not layered on (no second tail). */
+  drawn?: boolean;
+}
+
+type Point = { x: number; y: number };
+
+/** One species' puppet, from `art/rig/<species>.json`. */
+export interface SpeciesRig {
+  parts: Record<PartName, RigPart>;
+  poseTail: Record<PoseName, PoseTail>;
+  /** The sit pose is drawn without ears and eyes; these parts are always layered on it. Other poses keep their own. */
+  sitOverlay: Partial<Record<PartName, [number, number]>>;
+  /**
+   * Just above the top of the head, measured on the art, in cell pixels relative to the body pivot (facing
+   * right): where a napping pet's "z"s start. Looks not listed use the standing pet's (`puppet`).
+   */
+  headTop: Partial<Record<PoseName, Point>> & { puppet: Point };
+  /**
+   * Scales and turns the ears' mood rotation: 1 when the ear art stands up (it folds back anticlockwise),
+   * negative when it hangs from its root (a floppy ear swings back clockwise, away from the eye, and less far).
+   */
+  earTurn: number;
+}
+
 export const CELL = ART_CELL;
-export const RIG = rigJson.parts as Record<PartName, RigPart>;
+export const RIGS: { readonly [S in Species]: SpeciesRig } = {
+  cat: catRig as unknown as SpeciesRig,
+  dog: dogRig as unknown as SpeciesRig,
+};
 
 /**
- * The pet's box inside its art cell, in cell pixels: the body rect the world and hit boxes use.
+ * The pet's box inside its art cell (the same for every species), in cell pixels: the body rect the world and hit boxes use.
  * Symmetric about the cell centre so mirroring keeps the box in place.
  */
 export const CAT_BOX = { left: 6, top: 8, right: 90, bottom: 88 } as const;
@@ -80,6 +114,12 @@ const POSE_OF: Partial<Record<AnimName, PoseName>> = {
   'sit-up': 'sit-up',
   'belly-up': 'belly-up',
   dangle: 'dangle',
+};
+
+/** Where a species draws an animation on a different pose. A dog chases its tail as a spinning ring. */
+const POSE_OVERRIDE: { readonly [S in Species]: Partial<Record<AnimName, PoseName>> } = {
+  cat: {},
+  dog: { 'chase-tail': 'loaf' },
 };
 
 const TAU = Math.PI * 2;
@@ -133,44 +173,35 @@ const DANGLE_SWAY_HZ = 0.8;
 const FALL_LEG_SPREAD = 0.5;
 const LAND_SQUASH_PX = 2;
 
-/** Where the tail base sits on each key pose, and its rotation (the tail art hangs down and to the left from its base, so rotation 0 is the standing cat). */
-const POSE_TAIL: Record<PoseName, { x: number; y: number; rotation: number; swing: number }> = {
-  sit: { x: -22, y: 22, rotation: 1.1, swing: 1 },
-  loaf: { x: -30, y: 8, rotation: 1.2, swing: 0.6 },
-  'sleep-curl': { x: 26, y: 16, rotation: 1, swing: 0.3 },
-  'belly-up': { x: -36, y: 4, rotation: 1.1, swing: 1 },
-  stretch: { x: -30, y: -21, rotation: 2.3, swing: 0.6 },
-  groom: { x: -29, y: 22, rotation: 1.1, swing: 0.6 },
-  'sit-up': { x: -17, y: 26, rotation: 1.1, swing: 1 },
-  dangle: { x: -11, y: 8, rotation: -0.56, swing: 1.4 },
-};
+// Dogs. Wag (a dog's Purr): the tail lifts and beats fast and the whole back end wiggles.
+const WAG_HZ = 4.5;
+const WAG_LIFT = 0.6;
+const WAG_SWING = 0.55;
+const WAG_WIGGLE = 0.05;
+const WAG_SHIFT_PX = 1;
+// A standing dog's tail wags faster the happier it is, and droops when cross.
+const DOG_TAIL_HZ_HAPPY = 2.2;
+const DOG_TAIL_HZ_CROSS = 0.3;
+const DOG_TAIL_DROOP = 0.6;
+// Tail thump in a sit: the tail rests on the floor and beats up in short pulses, quicker when happy.
+const THUMP_HZ_HAPPY = 1.1;
+const THUMP_HZ_CROSS = 0.35;
+const THUMP_LIFT = 0.4;
+/** The share of each thump cycle the tail is off the floor. */
+const THUMP_UP_SHARE = 0.18;
+// Scratch (a dog's Groom): a fast shake from the hind leg going at the ear.
+const SCRATCH_HZ = 7;
+const SCRATCH_PX = 2;
 
-/** The sit pose is drawn without ears and eyes; these parts are always layered on it. Other poses keep their own. */
-const SIT_OVERLAY: Partial<Record<PartName, [number, number]>> = {
-  'ear-near': [24, -44],
-  'ear-far': [33, -45],
-  'eyes-open': [34, -37],
-  'eyes-closed': [34, -37],
-};
-
-/**
- * Just above the top of the head, measured on the art, in cell pixels relative to the body pivot (facing
- * right): where a napping cat's "z"s start. Looks not listed use the standing cat's.
- */
-const HEAD_TOP: Partial<Record<PoseName, { x: number; y: number }>> & { puppet: { x: number; y: number } } = {
-  puppet: { x: 36, y: -42 },
-  sit: { x: 27, y: -48 },
-  'sleep-curl': { x: 40, y: -32 },
-};
-
-/** Pure: where a look's head top is. */
-export function headTop(pose: RigFrame['pose']): { x: number; y: number } {
-  return (pose !== 'puppet' && !pose.startsWith('walk-') && HEAD_TOP[pose as PoseName]) || HEAD_TOP.puppet;
+/** Pure: where a look's head top is, for the species. */
+export function headTop(pose: RigFrame['pose'], species: Species = 'cat'): { x: number; y: number } {
+  const tops = RIGS[species].headTop;
+  return (pose !== 'puppet' && !pose.startsWith('walk-') && tops[pose as PoseName]) || tops.puppet;
 }
 
 const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));
 
-/** 0 for a happy cat, 1 for a cross one. Content and Grumpy sit pin it to their ends. */
+/** 0 for a happy pet, 1 for a cross one. Content and Grumpy sit pin it to their ends. */
 function crossness(anim: AnimName, mood: Mood): number {
   const g = clamp01(1 - mood.affection / 100);
   if (anim === 'grumpy-sit') return Math.max(g, 0.9);
@@ -199,6 +230,24 @@ function tailSwing(t: number, g: number): number {
   return TAIL_SWING * Math.sin(TAU * hz * t);
 }
 
+/** A dog's standing tail: wags fast when happy, slow and low when cross. */
+function dogTailWag(t: number, g: number): number {
+  const hz = DOG_TAIL_HZ_HAPPY + (DOG_TAIL_HZ_CROSS - DOG_TAIL_HZ_HAPPY) * g;
+  return TAIL_SWING * (1 - g / 2) * Math.sin(TAU * hz * t) - DOG_TAIL_DROOP * g;
+}
+
+/** A sitting dog's tail thump: 0 on the floor, rising briefly once a cycle (clockwise is up for a left-lying tail). */
+function tailThump(t: number, g: number): number {
+  const hz = THUMP_HZ_HAPPY + (THUMP_HZ_CROSS - THUMP_HZ_HAPPY) * g;
+  const phase = (t * hz) % 1;
+  if (phase >= THUMP_UP_SHARE) return 0;
+  return THUMP_LIFT * (1 - g / 2) * Math.sin((Math.PI * phase) / THUMP_UP_SHARE);
+}
+
+function wag(t: number): number {
+  return Math.sin(TAU * WAG_HZ * t);
+}
+
 function breath(t: number, seconds: number): number {
   return BREATH_PX * Math.sin((TAU * t) / seconds);
 }
@@ -220,25 +269,26 @@ function settle(frame: RigFrame): RigFrame {
 
 const isLeg = (p: PartName): boolean => p.startsWith('leg-') || p === 'paw-raised';
 
-function rest(part: PartName): PartPose {
-  const [x, y] = RIG[part].offset;
+function rest(rig: SpeciesRig, part: PartName): PartPose {
+  const [x, y] = rig.parts[part].offset;
   // The head is part of the body image; its own image is only kept for other rigs.
   const visible = part !== 'eyes-closed' && part !== 'paw-raised' && part !== 'head';
   return { x, y, rotation: 0, visible };
 }
 
-function puppet(anim: AnimName, t: number, mood: Mood): RigFrame {
+function puppet(species: Species, anim: AnimName, t: number, mood: Mood): RigFrame {
   const g = crossness(anim, mood);
   const parts = {} as Record<PartName, PartPose>;
-  for (const p of PART_NAMES) parts[p] = rest(p);
+  for (const p of PART_NAMES) parts[p] = rest(RIGS[species], p);
 
   const blink = blinking(t);
   parts['eyes-open'].visible = !blink;
   parts['eyes-closed'].visible = blink;
-  const ear = earRotation(anim, t, g);
+  const turn = RIGS[species].earTurn;
+  const ear = turn * earRotation(anim, t, g);
   parts['ear-near'].rotation = ear;
   parts['ear-far'].rotation = ear;
-  parts.tail.rotation = tailSwing(t, g);
+  parts.tail.rotation = species === 'dog' ? dogTailWag(t, g) : tailSwing(t, g);
 
   const walking = anim === 'walk' || anim === 'wander' || anim === 'zoomies';
   if (walking) {
@@ -255,8 +305,8 @@ function puppet(anim: AnimName, t: number, mood: Mood): RigFrame {
     parts['leg-front-far'].rotation = -FALL_LEG_SPREAD;
     parts['leg-back-near'].rotation = FALL_LEG_SPREAD;
     parts['leg-back-far'].rotation = FALL_LEG_SPREAD;
-    parts['ear-near'].rotation = -EAR_BACK_MAX;
-    parts['ear-far'].rotation = -EAR_BACK_MAX;
+    parts['ear-near'].rotation = -turn * EAR_BACK_MAX;
+    parts['ear-far'].rotation = -turn * EAR_BACK_MAX;
   } else if (anim === 'land') {
     const squash = LAND_SQUASH_PX * (1 - clamp01(t / ANIM_SECONDS.land));
     for (const p of PART_NAMES) if (!isLeg(p)) parts[p].y += squash;
@@ -282,19 +332,38 @@ function puppet(anim: AnimName, t: number, mood: Mood): RigFrame {
   return { pose: 'puppet', parts, flipX, rotation };
 }
 
-function keyPose(pose: PoseName, anim: AnimName, t: number, mood: Mood): RigFrame {
+/** How the tail moves on a key pose, added to the pose's rest rotation. */
+function poseTailMotion(species: Species, pose: PoseName, anim: AnimName, t: number, g: number): number {
+  const { swing } = RIGS[species].poseTail[pose];
+  if (species === 'cat') return swing * tailSwing(t, g);
+  if (anim === 'purr') return WAG_LIFT + WAG_SWING * wag(t);
+  if (pose === 'sit') return swing * tailThump(t, g);
+  return swing * dogTailWag(t, g);
+}
+
+function keyPose(species: Species, pose: PoseName, anim: AnimName, t: number, mood: Mood): RigFrame {
+  const dog = species === 'dog';
+  const rig = RIGS[species];
   const g = crossness(anim, mood);
-  const sleeping = anim === 'nap' || anim === 'cuddle-nap';
+  // A dog's Curl nap (its Loaf) breathes like a nap.
+  const sleeping = anim === 'nap' || anim === 'cuddle-nap' || (dog && anim === 'loaf');
   const parts: Partial<Record<PartName, PartPose>> = {
     body: { x: 0, y: 0, rotation: 0, visible: true },
   };
-  const tail = POSE_TAIL[pose];
-  parts.tail = { x: tail.x, y: tail.y, rotation: tail.rotation + tail.swing * tailSwing(t, g), visible: true };
+  const tail = rig.poseTail[pose];
+  parts.tail = {
+    x: tail.x,
+    y: tail.y,
+    rotation: tail.rotation + poseTailMotion(species, pose, anim, t, g),
+    visible: !tail.drawn,
+  };
 
   if (pose === 'sit') {
-    const eyesShut = anim === 'purr' || (anim === 'yawn' && t > ANIM_SECONDS.yawn * 0.25) || blinking(t);
-    const ear = earRotation(anim, t, g);
-    for (const [name, [x, y]] of Object.entries(SIT_OVERLAY) as [PartName, [number, number]][]) {
+    // A purring cat closes its eyes; a wagging dog keeps them open.
+    const eyesShut =
+      (anim === 'purr' && !dog) || (anim === 'yawn' && t > ANIM_SECONDS.yawn * 0.25) || blinking(t);
+    const ear = rig.earTurn * earRotation(anim, t, g);
+    for (const [name, [x, y]] of Object.entries(rig.sitOverlay) as [PartName, [number, number]][]) {
       const isEar = name === 'ear-near' || name === 'ear-far';
       const visible = name === 'eyes-open' ? !eyesShut : name === 'eyes-closed' ? eyesShut : true;
       parts[name] = { x, y, rotation: isEar ? ear : 0, visible };
@@ -304,15 +373,24 @@ function keyPose(pose: PoseName, anim: AnimName, t: number, mood: Mood): RigFram
   let rotation = 0;
   // Breathing (and a purr's shake) moves the pose and everything layered on it together.
   let lift = breath(t, sleeping ? NAP_BREATH_SECONDS : BREATH_SECONDS);
-  if (anim === 'purr') {
+  let shift = 0;
+  if (anim === 'purr' && dog) {
+    rotation = WAG_WIGGLE * wag(t);
+    shift = WAG_SHIFT_PX * wag(t);
+  } else if (anim === 'purr') {
     rotation = PURR_LEAN;
     lift += PURR_SHAKE_PX * Math.sin(TAU * PURR_SHAKE_HZ * t);
+  } else if (anim === 'groom' && dog) {
+    lift += SCRATCH_PX * Math.sin(TAU * SCRATCH_HZ * t);
   } else if (anim === 'chase-tail') {
     rotation = TAU * CHASE_TAIL_TURNS * clamp01(t / ANIM_SECONDS['chase-tail']);
   } else if (anim === 'dangle') {
     rotation = DANGLE_SWAY * Math.sin(TAU * DANGLE_SWAY_HZ * t);
   }
-  for (const p of Object.values(parts)) p.y += lift;
+  for (const p of Object.values(parts)) {
+    p.x += shift;
+    p.y += lift;
+  }
   return { pose, parts, flipX: false, rotation };
 }
 
@@ -329,21 +407,28 @@ function walkFrame(anim: AnimName, t: number): RigFrame {
 }
 
 export interface RigOptions {
+  /** Defaults to cat. Species changes only the look (see rigPose). */
+  species?: Species;
   /** Play the walk cycle frames for walking (the coat has them and TUNING.walkMode is 'frames'). */
   walkFrames?: boolean;
 }
 
-/** Pure: the drawn frame for an animation at time t (seconds since it started) and mood. */
+/**
+ * Pure: the drawn frame for an animation at time t (seconds since it started) and mood.
+ * Species changes only the look: a dog wags for Purr, curls nose under tail for Loaf,
+ * scratches an ear for Groom and thumps its tail in a sit.
+ */
 export function rigPose(anim: AnimName, t: number, mood: Mood, options: RigOptions = {}): RigFrame {
+  const species = options.species ?? 'cat';
   if (options.walkFrames && (anim === 'walk' || anim === 'wander' || anim === 'zoomies')) return walkFrame(anim, t);
   if (anim === 'roll-over') {
     const p = clamp01(t / ANIM_SECONDS['roll-over']);
     if (p >= ROLL_BELLY_FROM && p <= ROLL_BELLY_TO) {
       // On its back: the belly-up drawing already shows half a turn.
-      const frame = settle(keyPose('belly-up', anim, t, mood));
+      const frame = settle(keyPose(species, 'belly-up', anim, t, mood));
       return { ...frame, rotation: TAU * p - Math.PI };
     }
   }
-  const pose = POSE_OF[anim];
-  return settle(pose ? keyPose(pose, anim, t, mood) : puppet(anim, t, mood));
+  const pose = POSE_OVERRIDE[species][anim] ?? POSE_OF[anim];
+  return settle(pose ? keyPose(species, pose, anim, t, mood) : puppet(species, anim, t, mood));
 }

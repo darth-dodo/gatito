@@ -1,10 +1,11 @@
 // Generates cut-out puppet source art with OpenRouter. Usage:
 //   npm run art:generate -- --species cat --coat orange-tabby [--only tail,sit] [--reference path] [--max-calls N]
+//   npm run art:generate -- --species dog --coat golden [--style art/source/cat/orange-tabby/reference.png]
 // Requires OPENROUTER_API_KEY in the environment (never read from or written to disk here).
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { COLOURS, SPECIES } from '../../src/brain/types';
+import { COATS, SPECIES, type Species } from '../../src/brain/types';
 import { isRetryableStatus, parseBody } from './retry';
 
 const ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
@@ -21,7 +22,7 @@ function walkFrame(n: string, legs: string): string {
   return `whole cat walking in place, frame ${n} of a smooth six-frame side-view walk cycle: ${legs}. Exactly four legs. Same cat, same body, head and tail as the reference, only the legs move; the back stays level, the tail is held as in the reference`;
 }
 
-const SUBJECTS: Record<string, string> = {
+const CAT_SUBJECTS: Record<string, string> = {
   reference: 'one full-body cat standing on four legs, whole body including head, ears, tail and all four legs, relaxed neutral pose',
   body: 'the torso only, spanning about x 20% to 86% and y 36% to 65% of the canvas as in the reference, with no head, no neck, no legs, no tail and no ears',
   head: 'the head only (from the neck up), with the ears and the eyes painted over with plain fur so the face is blank',
@@ -50,6 +51,31 @@ const SUBJECTS: Record<string, string> = {
   'walk-6': walkFrame('6', 'the near front leg passes under the body, the far back leg swings forward, the far front leg pushes back'),
   dangle: 'whole cat hanging limp as if lifted by the scruff from above, body hanging, front paws dangling down, hind legs dangling, tail hanging straight down, no hand, no person, nothing holding it',
 };
+/** Where a dog's art differs from a cat's: floppy ears, and the dog version of each pose. */
+const DOG_SUBJECTS: Record<string, string> = {
+  ...CAT_SUBJECTS,
+  ...Object.fromEntries(
+    Object.entries(CAT_SUBJECTS)
+      .filter(([name]) => name.startsWith('walk-'))
+      .map(([name, text]) => [name, text.replace(/\bcat\b/g, 'dog')]),
+  ),
+  reference: 'one full-body dog standing on four legs, whole body including head, floppy ears, muzzle, tail and all four legs, relaxed neutral pose',
+  head: 'the head only (from the neck up) with its muzzle and nose, with the ears and the eyes painted over with plain fur so the face is blank',
+  'ear-near': 'the near floppy ear only, the one hanging down from the top of the head on the side facing us',
+  'ear-far': 'the far floppy ear only, the small darker ear just behind the head; no head, no body, no other ear',
+  'paw-raised': 'the near front leg only, but lifted and raised forward and up as for a high five: from the shoulder at about x 66% and y 58% of the canvas up to the open paw at about x 84% and y 30%; erase the whole rest of the dog (no body, no head, no tail, no other legs)',
+  sit: 'whole dog sitting upright, side view, drawn WITHOUT ears and WITHOUT eyes (blank face), without the tail',
+  loaf: 'whole dog lying on the floor curled up in a low ring, nose tucked in against its back legs, eyes closed, without the tail; the same size as the reference dog, only about 40% of the canvas tall, resting on the same feet baseline',
+  'sleep-curl': 'whole dog lying down asleep, chin resting on its stretched-out front paws, eyes closed, without the tail',
+  'belly-up': 'whole dog lying on its back with belly up, paws in the air and ears flopped down, without the tail',
+  stretch: 'whole dog in a play bow, front legs stretched flat forward, chest low, rear raised, without the tail',
+  groom: 'whole dog sitting and scratching behind its ear with a raised hind leg, eyes shut happily, without the tail',
+  'sit-up': 'whole dog sitting up on hind legs begging, front paws held up, without the tail',
+  dangle: 'whole dog lifted off the ground and hanging VERTICALLY from the scruff of its neck: head at the top, body hanging straight down below it, front paws dangling down in front of the chest, hind legs dangling at the bottom, ears hanging, without the tail, no hand, no person, nothing holding it',
+};
+
+const SUBJECTS: { readonly [S in Species]: Record<string, string> } = { cat: CAT_SUBJECTS, dog: DOG_SUBJECTS };
+
 const PARTS = ['body', 'head', 'ear-near', 'ear-far', 'eyes-open', 'eyes-closed', 'tail', 'leg-front-near', 'leg-front-far', 'leg-back-near', 'leg-back-far', 'paw-raised'];
 const POSES = ['sit', 'loaf', 'sleep-curl', 'belly-up', 'stretch', 'groom', 'sit-up', 'dangle'];
 // The walk-1..walk-6 frames are optional and only generated when named with --only.
@@ -133,10 +159,16 @@ async function main(): Promise<void> {
     console.error('Usage: npm run art:generate -- --species cat --coat orange-tabby [--only a,b] [--reference path]');
     process.exit(1);
   }
-  if (!(SPECIES as readonly string[]).includes(species) || !(COLOURS as readonly string[]).includes(coat)) {
-    console.error(`Unknown --species or --coat. Species: ${SPECIES.join(', ')}. Coats: ${COLOURS.join(', ')}.`);
+  if (!(SPECIES as readonly string[]).includes(species)) {
+    console.error(`Unknown --species. Species: ${SPECIES.join(', ')}.`);
     process.exit(1);
   }
+  const coats: readonly string[] = COATS[species as Species];
+  if (!coats.includes(coat)) {
+    console.error(`Unknown --coat for a ${species}. Coats: ${coats.join(', ')}.`);
+    process.exit(1);
+  }
+  const subjects = SUBJECTS[species as Species];
   const only = arg('only')?.split(',').map((s) => s.trim()).filter(Boolean);
   const dir = join('art', 'source', species, coat);
   mkdirSync(dir, { recursive: true });
@@ -144,24 +176,28 @@ async function main(): Promise<void> {
   const prompt = (subject: string, isPart: boolean) =>
     isPart
       ? `Edit the attached ${coatWords} ${species} pixel art image (96x96 grid, side view facing right). Keep ONLY ${subject}, exactly as it is in the image: same position, same size, same pixels, same canvas. Paint everything else flat magenta #FF00FF. No shadow, no text, no outline of removed parts. Output one square image.`
-      : `pixel art, 96x96 grid, side view facing right, ${coatWords} ${species}, ${subject}, flat magenta #FF00FF background, no shadow, no text. Use the attached image as the reference for style, colours and proportions. Same canvas and same scale as the reference cat, with the feet on the same baseline as the reference. Output one square image.`;
+      : `pixel art, 96x96 grid, side view facing right, ${coatWords} ${species}, ${subject}, flat magenta #FF00FF background, no shadow, no text. Use the attached image as the reference for style, colours and proportions. Same canvas and same scale as the reference ${species}, with the feet on the same baseline as the reference. Output one square image.`;
 
   let reference = arg('reference') ?? join(dir, 'reference.png');
   if (!arg('reference') && (!existsSync(reference) || only?.includes('reference'))) {
     console.log('generating reference');
-    const refPrompt = `pixel art, 96x96 grid, side view facing right, ${coatWords} ${species}, ${SUBJECTS.reference}, flat magenta #FF00FF background, no shadow, no text. Output one square image.`;
-    writeFileSync(reference, await generate(refPrompt, key));
+    const style = arg('style');
+    const styleNote = style
+      ? ' Match the attached pixel art exactly in style: same scale, same outline weight, same shading, same feet baseline and same canvas; it shows a different animal.'
+      : '';
+    const refPrompt = `pixel art, 96x96 grid, side view facing right, ${coatWords} ${species}, ${subjects.reference}, flat magenta #FF00FF background, no shadow, no text.${styleNote} Output one square image.`;
+    writeFileSync(reference, await generate(refPrompt, key, style));
     makeSquare(reference);
   }
   const names = (only ?? [...PARTS, ...POSES]).filter((n) => n !== 'reference');
   for (const name of names) {
-    if (!SUBJECTS[name]) {
+    if (!subjects[name]) {
       console.error(`unknown name: ${name}`);
       process.exit(1);
     }
     console.log(`generating ${name}`);
     const file = join(dir, `${name}.png`);
-    writeFileSync(file, await generate(prompt(SUBJECTS[name], PARTS.includes(name)), key, reference));
+    writeFileSync(file, await generate(prompt(subjects[name], PARTS.includes(name)), key, reference));
     makeSquare(file);
   }
   console.log(`done: ${calls} calls${sawCost ? `, reported cost about $${totalCost.toFixed(4)}` : ''}`);
