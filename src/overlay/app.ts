@@ -14,7 +14,7 @@ import { CAT_BOX, headTop, rigPose } from '../render/rig';
 import { PetStage } from '../render/stage';
 import { PetController } from '../sim/controller';
 import { PetTrainer } from '../sim/trickSession';
-import { NapTime, callOverX } from './napTime';
+import { NapTime, callOverX, hitboxBodies } from './napTime';
 import { World, type Body, type Box } from '../sim/world';
 import { CueRing } from './cueRing';
 import { HELD_HITBOX_PAD_PX, InputRouter, cursorEscapedHold } from './input';
@@ -296,6 +296,7 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
     isTraining: (id) => byId(id)?.trainer.phase() === 'playing',
     onTap: (id) => tappedAt.set(id, performance.now() / 1000),
     boxOf: (b) => world.drawnBox(b),
+    isInteractive: () => !nap.curled,
   });
   const offPointer = listenPointer(app.canvas, router);
 
@@ -344,8 +345,8 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
     nap.update(dt);
     const heldId = router.heldId();
     const held = heldId === null ? undefined : pets.find((p) => p.body.id === heldId);
-    // A pet cannot stay in your hand once Nap time hides it.
-    if (held && (nap.hidden || cursorEscapedHold(held.body, cursor))) router.release();
+    // A pet cannot stay in your hand once Nap time curls it up.
+    if (held && (nap.curled || cursorEscapedHold(held.body, cursor))) router.release();
 
     if (!nap.curled) for (const p of pets) p.controller.update(dt, ctx);
     else for (const p of pets) if (!p.body.held) p.body.vx = 0;
@@ -371,11 +372,15 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
       stage.drawSparkles(c.pet.id, sparkleBurst(nowSeconds - (learnedAt.get(c.pet.id) ?? -Infinity)));
     }
     napT = nap.curled ? napT + dt : 0;
-    pushHitboxes(nap.hidden ? [] : world.bodies(), performance.now(), router.heldId(), ring.rects());
+    pushHitboxes(hitboxBodies(nap, world.bodies()), performance.now(), router.heldId(), ring.rects());
   });
 
   return {
-    setNapTime: (on) => nap.setOn(on),
+    setNapTime: (on) => {
+      // The cursor jumps while the pets sleep; waking must not count that as a stroke.
+      if (on && !nap.on) router.resetStrokes();
+      nap.setOn(on);
+    },
     callOver(id) {
       const p = pets.find((q) => q.controller.pet.id === id);
       const x = p ? callOverX(nap, floor, p.body.width) : null;

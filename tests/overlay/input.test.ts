@@ -58,7 +58,7 @@ interface Setup {
   onPetted: ReturnType<typeof vi.fn>;
 }
 
-function setup(cats: { id: string; x: number; mood?: Mood }[]): Setup {
+function setup(cats: { id: string; x: number; mood?: Mood }[], isInteractive?: () => boolean): Setup {
   const world = new World(floor);
   const pets: Setup['pets'] = cats.map((c, i) => {
     const b = body(c.id, c.x);
@@ -70,7 +70,7 @@ function setup(cats: { id: string; x: number; mood?: Mood }[]): Setup {
   const ring = new CueRing();
   const onCue = vi.fn();
   const onPetted = vi.fn(() => false);
-  const router = new InputRouter({ pets, world, onCueRequest, onTap, ring, onCue, onPetted, isTraining: () => false });
+  const router = new InputRouter({ pets, world, onCueRequest, onTap, ring, onCue, onPetted, isTraining: () => false, isInteractive });
   return { world, pets, router, onCueRequest, onTap, ring, onCue, onPetted };
 }
 
@@ -595,5 +595,46 @@ describe('cursorEscapedHold', () => {
 
   it('keeps the hold before any cursor is known', () => {
     expect(cursorEscapedHold(b, null)).toBe(false);
+  });
+});
+
+describe('InputRouter while pets are curled up', () => {
+  it('ignores strokes, presses, taps and cue requests', () => {
+    let on = false;
+    const { router, pets, onTap, onCueRequest } = setup([{ id: 'mochi', x: 400 }], () => !on);
+    on = true;
+    stroke(router, 3, 0);
+    router.pointerDown(420, 760, 0);
+    router.pointerUp(420, 760, 1);
+    router.pointerDown(420, 760, 2);
+    expect(pets[0]!.controller.pet.mood.affection).toBe(60);
+    expect(onTap).not.toHaveBeenCalled();
+    expect(onCueRequest).not.toHaveBeenCalled();
+    expect(router.heldId()).toBeNull();
+  });
+
+  it('still pets normally while interactive', () => {
+    const { router, pets } = setup([{ id: 'mochi', x: 400 }], () => true);
+    stroke(router, 1, 0);
+    expect(pets[0]!.controller.pet.mood.affection).toBeGreaterThan(60);
+  });
+});
+
+describe('InputRouter.resetStrokes', () => {
+  it('does not count the first cursor move after a reset as a continuation', () => {
+    const { router, pets } = setup([{ id: 'mochi', x: 400 }]);
+    stroke(router, 1, 0);
+    const after = pets[0]!.controller.pet.mood.affection;
+    expect(after).toBe(60 + TUNING.affectionPerStroke);
+    router.resetStrokes();
+    router.cursorMove(420, 760, 5);
+    expect(pets[0]!.controller.pet.mood.affection).toBe(after);
+  });
+
+  it('counts that move without a reset (guards the test above)', () => {
+    const { router, pets } = setup([{ id: 'mochi', x: 400 }]);
+    stroke(router, 1, 0);
+    router.cursorMove(420, 760, 5);
+    expect(pets[0]!.controller.pet.mood.affection).toBe(60 + 2 * TUNING.affectionPerStroke);
   });
 });

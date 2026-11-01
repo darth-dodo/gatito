@@ -55,6 +55,8 @@ export interface InputDeps {
   isTraining(petId: string): boolean;
   /** The box a pet was drawn in; defaults to its body. Hit tests use it so clicks match the picture. */
   boxOf?(body: Body): Box;
+  /** False while the pets cannot be touched (curled up for Nap time); defaults to true. */
+  isInteractive?(): boolean;
 }
 
 interface Stroking {
@@ -117,7 +119,7 @@ export class InputRouter {
    * while a press or hold is in progress, so a drag never counts as stroking.
    */
   cursorMove(x: number, y: number, t: number): void {
-    if (this.hold) return;
+    if (this.hold || !this.interactive()) return;
     const target = this.hit(x, y);
     if (target?.body.id !== this.over) this.leaveStroking();
     if (!target) return;
@@ -156,6 +158,10 @@ export class InputRouter {
   }
 
   pointerDown(x: number, y: number, button: 0 | 2): void {
+    if (!this.interactive()) {
+      this.release();
+      return;
+    }
     if (this.hold?.lifted) {
       // A press while still holding means the last release was missed: drop now.
       this.release();
@@ -190,7 +196,7 @@ export class InputRouter {
   pointerUp(x: number, y: number, t: number): void {
     const hold = this.hold;
     this.release();
-    if (!hold || hold.lifted) return;
+    if (!hold || hold.lifted || !this.interactive()) return;
     if (Math.hypot(x - hold.pressX, y - hold.pressY) >= TUNING.dragStartPx) return;
     const target = this.deps.pets.find((p) => p.body.id === hold.id);
     if (!target) return;
@@ -216,9 +222,22 @@ export class InputRouter {
     if (hold.lifted) this.deps.world.drop(hold.id);
   }
 
+  /** Forgets every stroke in progress, so the next cursor sample starts a fresh sweep. */
+  resetStrokes(): void {
+    for (const s of this.strokes.values()) {
+      s.detector.reset();
+      s.seen = 0;
+    }
+    this.leaveStroking();
+  }
+
   /** The pointer left the pets' window area: any stroke in progress ends. */
   pointerLeave(): void {
     this.leaveStroking();
+  }
+
+  private interactive(): boolean {
+    return this.deps.isInteractive?.() ?? true;
   }
 
   private hit(x: number, y: number): Pettable | null {
