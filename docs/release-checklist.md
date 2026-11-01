@@ -8,7 +8,8 @@ Result values: `pass`, `fail`, `owner` (needs a person at a Mac, not yet done) o
 
 - [ ] `npm run tauri build -- --bundles app,dmg` succeeds (checked: dmg 2.22 MiB, app 4.45 MiB, arm64)
 - [ ] The built app has no Dock icon (`LSUIElement` is true; checked in the bundled `Info.plist`) and minimum macOS 13.0 (checked)
-- [ ] Open the `.dmg`, drag Windowsill to Applications, right-click, Open (unsigned build)
+- [ ] Open the `.dmg`, drag Windowsill to Applications and get past Gatekeeper as the README says (unsigned build): **Open Anyway** in System Settings > Privacy & Security on macOS 15 and newer, right-click then Open on macOS 13 and 14
+- [ ] A `.dmg` downloaded from the draft release (so it is quarantined) opens without an "is damaged" message on Apple Silicon (the bundle is ad-hoc signed; `codesign -dv /Applications/Windowsill.app` shows `Signature=adhoc`)
 - [ ] First launch with no save file opens the New pet window
 
 ## 1. Invisible when working (zero clicks lost)

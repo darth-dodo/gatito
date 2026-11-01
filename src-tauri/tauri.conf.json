@@ -33,9 +33,10 @@
     "category": "Entertainment",
     "shortDescription": "Little pixel cats that live on your Mac's desktop.",
     "longDescription": "Windowsill puts pets on your desktop. Pet them, teach them tricks, and let them nap above the Dock while you work. Clicks pass through everywhere except on a pet.",
-    "copyright": "darth-dodo",
+    "copyright": "Copyright 2026 darth-dodo",
     "macOS": {
-      "minimumSystemVersion": "13.0"
+      "minimumSystemVersion": "13.0",
+      "signingIdentity": "-"
     }
   }
 }
