@@ -1,4 +1,5 @@
 import { ipc } from '../ipc';
+import { boot } from './boot';
 import { startPets, type PetHost } from './app';
 import { createWindowTarget, menuPets, withNapTime, type MenuRequest } from './menu';
 import { Autosave, interpretSave, planChange } from './persistence';
@@ -43,45 +44,70 @@ async function main(): Promise<void> {
   );
   autosave.start();
   const refreshMenu = (): Promise<void> => ipc.setMenuPets(menuPets(running.pets()));
+  const logError =
+    (what: string) =>
+    (e: unknown): void =>
+      console.error(what, e);
 
-  await ipc.onPetsChanged((payload) => {
-    // Apply only the one change the form made; never remove a pet for being absent.
-    const action = planChange(running.pets(), payload);
-    if (!action) return;
-    let applied: Promise<void> = Promise.resolve();
-    if (action.kind === 'rehome') running.removePet(action.id);
-    else if (action.kind === 'edit') applied = running.updatePet(action.pet);
-    else applied = running.addPet(action.pet);
-    void applied
-      .catch((e: unknown) => console.error('Could not apply the pet change', e))
-      .finally(() => {
-        void autosave.flush();
-        void refreshMenu();
-      });
-  });
+  const wirePetsChanged = async (): Promise<void> => {
+    await ipc.onPetsChanged((payload) => {
+      // Apply only the one change the form made; never remove a pet for being absent.
+      const action = planChange(running.pets(), payload);
+      if (!action) return;
+      let applied: Promise<void> = Promise.resolve();
+      if (action.kind === 'rehome') running.removePet(action.id);
+      else if (action.kind === 'edit') applied = running.updatePet(action.pet);
+      else applied = running.addPet(action.pet);
+      void applied
+        .catch((e: unknown) => console.error('Could not apply the pet change', e))
+        .finally(() => {
+          autosave.flush().catch(logError('Could not save'));
+          refreshMenu().catch(logError('Could not refresh the menu'));
+        });
+    });
+  };
 
   const openCreate = (request: MenuRequest): void => {
-    void ipc.openCreateWindow(createWindowTarget(request));
+    ipc.openCreateWindow(createWindowTarget(request)).catch(logError('Could not open the pet window'));
   };
-  await Promise.all([
-    ipc.onNapTime((on) => {
-      running.setNapTime(on);
-      settings = withNapTime(settings, on);
-      void autosave.flush();
-    }),
-    ipc.onCallOver((id) => running.callOver(id)),
-    ipc.onMenuNewPet(() => openCreate({ kind: 'new-pet' })),
-    ipc.onMenuEditPet((id) => openCreate({ kind: 'edit-pet', id })),
-    ipc.onMenuRehomePet((id) => openCreate({ kind: 'rehome-pet', id })),
-  ]);
-  await Promise.all([ipc.setNapTime(settings.napTime), refreshMenu()]);
+  const wireQuit = async (): Promise<void> => {
+    await ipc.onQuitRequested(() => {
+      autosave.stop();
+      void autosave
+        .flush()
+        .catch(logError('Could not save on quit'))
+        .finally(() => ipc.quitReady().catch(logError('Could not confirm quit')));
+    });
+  };
 
-  await ipc.onQuitRequested(() => {
-    autosave.stop();
-    void autosave.flush().finally(() => ipc.quitReady());
-  });
+  const wireMenu = async (): Promise<void> => {
+    await Promise.all([
+      ipc.onNapTime((on) => {
+        running.setNapTime(on);
+        settings = withNapTime(settings, on);
+        autosave.flush().catch(logError('Could not save'));
+      }),
+      ipc.onCallOver((id) => running.callOver(id)),
+      ipc.onMenuNewPet(() => openCreate({ kind: 'new-pet' })),
+      ipc.onMenuEditPet((id) => openCreate({ kind: 'edit-pet', id })),
+      ipc.onMenuRehomePet((id) => openCreate({ kind: 'rehome-pet', id })),
+    ]);
+  };
 
-  if (loaded.firstRun) openCreate({ kind: 'new-pet' });
+  // Failed steps are logged and boot carries on; the first New pet window must still open.
+  await boot(
+    wireQuit,
+    [
+      wirePetsChanged,
+      wireMenu,
+      () => ipc.setNapTime(settings.napTime),
+      refreshMenu,
+      async () => {
+        if (loaded.firstRun) openCreate({ kind: 'new-pet' });
+      },
+    ],
+    logError('Boot step failed'),
+  );
 }
 
-void main();
+main().catch((e: unknown) => console.error('Windowsill failed to start', e));

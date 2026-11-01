@@ -5,7 +5,7 @@ import { newPairings } from '../../src/brain/learning';
 import { tickMood } from '../../src/brain/mood';
 import { seededRng } from '../../src/brain/rng';
 import type { Mood, Pet } from '../../src/brain/types';
-import { CURL_SECONDS, FADE_SECONDS, NapTime, callOverX } from '../../src/overlay/napTime';
+import { CURL_SECONDS, FADE_SECONDS, NapTime, callOverX, hitboxBodies } from '../../src/overlay/napTime';
 import { PetController } from '../../src/sim/controller';
 import { World, type Body } from '../../src/sim/world';
 
@@ -133,5 +133,23 @@ describe('call over', () => {
     }
     expect(Math.abs(body.x + body.width / 2 - 500)).toBeLessThan(4);
     expect(c.anim().name).not.toBe('walk');
+  });
+});
+
+describe('hitboxBodies', () => {
+  it('lists the bodies only while Nap time has not started curling them', () => {
+    const nap = new NapTime();
+    const bodies = [{ id: 'a' }, { id: 'b' }];
+    expect(hitboxBodies(nap, bodies)).toEqual(bodies);
+    nap.setOn(true);
+    expect(hitboxBodies(nap, bodies)).toEqual([]);
+    nap.update(CURL_SECONDS + 0.01);
+    expect(hitboxBodies(nap, bodies)).toEqual([]);
+    nap.update(FADE_SECONDS + 0.1);
+    expect(hitboxBodies(nap, bodies)).toEqual([]);
+    nap.setOn(false);
+    expect(hitboxBodies(nap, bodies)).toEqual([]);
+    nap.update(FADE_SECONDS + 0.1);
+    expect(hitboxBodies(nap, bodies)).toEqual(bodies);
   });
 });
