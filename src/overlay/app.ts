@@ -1,12 +1,12 @@
-/// <reference types="vite/client" />
-import { Application, Assets, Spritesheet, type SpritesheetData, type Texture } from 'pixi.js';
+import { Application } from 'pixi.js';
 import type { Floor, Point, Rect } from '../ipc';
 import { activeSeconds, clampFrameDelta } from '../brain/clock';
 import { fade, updateLearned } from '../brain/learning';
 import { tickMood } from '../brain/mood';
 import { seededRng } from '../brain/rng';
 import { TUNING } from '../brain/tuning';
-import type { Colour, Pet } from '../brain/types';
+import type { Pet } from '../brain/types';
+import { loadAtlas } from '../render/atlas';
 import { floatingZs, heartBurst, risingHearts } from '../render/effects';
 import { CAT_BOX, rigPose } from '../render/rig';
 import { PetStage } from '../render/stage';
@@ -18,16 +18,6 @@ import { HELD_HITBOX_PAD_PX, InputRouter, cursorEscapedHold } from './input';
 const HITBOX_MIN_INTERVAL_MS = 1000 / 30;
 /** Spreads per-pet seeds apart (golden ratio in 32 bits). */
 const SEED_STRIDE = 0x9e3779b9;
-
-const ATLAS_DATA = import.meta.glob<SpritesheetData>('../assets/atlas/*.json', {
-  eager: true,
-  import: 'default',
-});
-const ATLAS_IMAGES = import.meta.glob<string>('../assets/atlas/*.png', {
-  eager: true,
-  query: '?url',
-  import: 'default',
-});
 
 type Unlisten = () => void;
 
@@ -55,18 +45,6 @@ interface Living {
   controller: PetController;
 }
 
-async function loadAtlas(species: Pet['species'], colour: Colour): Promise<Spritesheet> {
-  const key = `../assets/atlas/${species}-${colour}`;
-  const data = ATLAS_DATA[`${key}.json`];
-  const url = ATLAS_IMAGES[`${key}.png`];
-  if (!data || !url) throw new Error(`No sprite sheet for ${species} ${colour}`);
-  const texture = await Assets.load<Texture>(url);
-  texture.source.scaleMode = 'nearest';
-  const sheet = new Spritesheet(texture, data);
-  await sheet.parse();
-  return sheet;
-}
-
 /** Places pet `index` of `count` evenly along the floor; a lone pet starts in the middle. */
 function spawnBody(id: string, floor: Floor, index: number, count: number): Body {
   const s = TUNING.renderScale;
@@ -84,6 +62,15 @@ function spawnBody(id: string, floor: Floor, index: number, count: number): Body
     width,
     height,
   };
+}
+
+/** A newcomer drops in from the top of the floor at `x01` (0 to 1) across it, and falls. */
+function dropBody(id: string, floor: Floor, x01: number): Body {
+  const body = spawnBody(id, floor, 0, 1);
+  body.x = floor.x + x01 * Math.max(0, floor.width - body.width);
+  body.y = floor.y;
+  body.grounded = false;
+  return body;
 }
 
 /**
@@ -156,8 +143,19 @@ function listenPointer(canvas: HTMLCanvasElement, router: InputRouter): Unlisten
   return () => off.abort();
 }
 
+export interface RunningPets {
+  stop(): void;
+  /** The pets as they are now, moods and learning included. */
+  pets(): Pet[];
+  /** Adds a pet that drops in from the top of the screen. */
+  addPet(pet: Pet): Promise<void>;
+  removePet(id: string): void;
+  /** Applies a new name, colour or style; mood and learning stay as they are. */
+  updatePet(pet: Pet): Promise<void>;
+}
+
 /** Runs the pets (brain, world, controllers and PixiJS stage) inside `container`, fed by `host`. */
-export async function startPets(host: PetHost, options: PetOptions): Promise<{ stop(): void }> {
+export async function startPets(host: PetHost, options: PetOptions): Promise<RunningPets> {
   const timeScale = options.timeScale ?? 1;
   const baseSeed = options.seed ?? Date.now();
 
@@ -178,13 +176,29 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<{ s
   const stage = new PetStage(app);
   const pushHitboxes = hitboxPusher(host);
   const pets: Living[] = [];
+  /** Ids being added; removing one before its art loads cancels it. */
+  const arriving = new Set<string>();
+  let spawned = 0;
+
+  const live = async (pet: Pet, body: Body): Promise<void> => {
+    arriving.add(pet.id);
+    let atlas: Awaited<ReturnType<typeof loadAtlas>>;
+    try {
+      atlas = await loadAtlas(pet.species, pet.colour);
+    } catch (e) {
+      // A failed load must not leave the id stuck, or the pet could never be added again.
+      arriving.delete(pet.id);
+      throw e;
+    }
+    if (!arriving.delete(pet.id)) return;
+    world.add(body);
+    stage.add(pet, atlas);
+    const rng = seededRng((baseSeed + spawned++ * SEED_STRIDE) >>> 0);
+    pets.push({ body, controller: new PetController(pet, body, rng) });
+  };
 
   for (const [i, pet] of options.pets.entries()) {
-    const body = spawnBody(pet.id, floor, i, options.pets.length);
-    world.add(body);
-    stage.add(pet, await loadAtlas(pet.species, pet.colour));
-    const rng = seededRng((baseSeed + i * SEED_STRIDE) >>> 0);
-    pets.push({ body, controller: new PetController(pet, body, rng) });
+    await live(pet, spawnBody(pet.id, floor, i, options.pets.length));
   }
 
   /** When each pet was last tapped (performance.now() seconds), for its heart burst. */
@@ -246,6 +260,31 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<{ s
       offPointer();
       for (const off of unlisten) off();
       app.destroy({ removeView: true }, { children: true });
+    },
+    pets: () => pets.map((p) => p.controller.pet),
+    async addPet(pet) {
+      if (arriving.has(pet.id) || pets.some((p) => p.controller.pet.id === pet.id)) return;
+      await live(pet, dropBody(pet.id, floor, Math.random()));
+    },
+    removePet(id) {
+      arriving.delete(id);
+      const i = pets.findIndex((p) => p.controller.pet.id === id);
+      if (i < 0) return;
+      world.remove(id);
+      stage.remove(id);
+      pets.splice(i, 1);
+    },
+    async updatePet(pet) {
+      const find = (): Living | undefined => pets.find((p) => p.controller.pet.id === pet.id);
+      const before = find();
+      if (!before) return;
+      const recoloured = pet.colour !== before.controller.pet.colour;
+      const atlas = recoloured ? await loadAtlas(pet.species, pet.colour) : null;
+      const living = find();
+      if (!living) return;
+      const next = { ...living.controller.pet, name: pet.name, colour: pet.colour, style: pet.style };
+      if (atlas) stage.add(next, atlas);
+      living.controller.pet = next;
     },
   };
 }

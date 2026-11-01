@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Browser demo page (`demo.html`) that runs the real pets on a pretend Mac desktop, with `?speed=` and `?seed=` options, and `npm run demo:record`, which films it into `docs/assets/demo.mp4` and `docs/assets/demo.gif` for the README.
 - Petting and handling: stroke a pet with the cursor and it purrs with rising hearts, keep going on a happy pet and it rolls belly up, drag it at least 4 px to lift it by the scruff, release and it falls and lands on its feet; a lost mouse-up can never leave a pet stuck held ([#17](https://github.com/darth-dodo/windowsill/pull/17)).
 - Tap a pet to pet it; three quick taps start a purr.
+- Create, edit and rehome pets in a New pet window (name, coat, personality, with a live preview); pets, moods and learned tricks are saved and come back after a restart; a bad save file is moved aside and the first run opens New pet ([#19](https://github.com/darth-dodo/windowsill/pull/19)).
 
 ### Changed
 

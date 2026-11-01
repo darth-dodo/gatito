@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>New pet</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f6f4f1;
+        --panel: #ffffff;
+        --ink: #2b2d42;
+        --muted: #6b6d80;
+        --line: rgba(43, 45, 66, 0.14);
+        --accent: #c96a2b;
+        --danger: #b3261e;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1f1e24;
+          --panel: #2a2930;
+          --ink: #eceaf2;
+          --muted: #a3a1b0;
+          --line: rgba(236, 234, 242, 0.16);
+          --accent: #e58a4a;
+          --danger: #f2867e;
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; }
+      body {
+        background: var(--bg);
+        color: var(--ink);
+        font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+        user-select: none;
+      }
+      form { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px 20px; height: 100%; }
+      h1 { margin: 0; font-size: 17px; font-weight: 600; }
+      #preview {
+        align-self: center;
+        width: 144px;
+        height: 144px;
+        border-radius: 12px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        overflow: hidden;
+      }
+      #preview canvas { display: block; }
+      label { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 8px; }
+      label > span { color: var(--muted); }
+      input, select {
+        font: inherit;
+        color: inherit;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 5px 8px;
+        min-height: 28px;
+        user-select: text;
+      }
+      select:disabled { opacity: 0.6; }
+      .error { margin: -6px 0 0 104px; min-height: 1.4em; color: var(--danger); font-size: 12px; }
+      .note { color: var(--muted); font-size: 12px; text-align: right; min-height: 1.4em; margin: 0; }
+      .actions { margin-top: auto; display: flex; gap: 8px; align-items: center; }
+      .actions .spacer { flex: 1; }
+      button {
+        font: inherit;
+        padding: 5px 14px;
+        min-height: 28px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: inherit;
+      }
+      button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+      button.danger { color: var(--danger); }
+      button:disabled { opacity: 0.5; }
+      dialog {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--panel);
+        color: var(--ink);
+        max-width: 320px;
+      }
+      dialog::backdrop { background: rgba(0, 0, 0, 0.3); }
+      dialog p { margin: 0 0 14px; }
+      dialog .actions { justify-content: flex-end; }
+      [hidden] { display: none !important; }
+    </style>
+    <script type="module" src="/src/create/main.ts"></script>
+  </head>
+  <body>
+    <form id="pet-form" novalidate>
+      <h1 id="heading">New pet</h1>
+      <div id="preview" aria-label="Preview of your pet" role="img"></div>
+      <label><span>Species</span><select id="species"></select></label>
+      <label><span>Name</span><input id="name" autocomplete="off" spellcheck="false" aria-describedby="name-error" /></label>
+      <p class="error" id="name-error" aria-live="polite"></p>
+      <label><span>Style</span><select id="style"></select></label>
+      <label><span>Colour</span><select id="colour"></select></label>
+      <label><span>Personality</span><select id="personality"></select></label>
+      <p class="note" id="limit-note" aria-live="polite"></p>
+      <div class="actions">
+        <button type="button" class="danger" id="rehome" hidden>Rehome…</button>
+        <span class="spacer"></span>
+        <button type="button" id="cancel">Cancel</button>
+        <button type="submit" class="primary" id="submit">Create</button>
+      </div>
+    </form>
+    <dialog id="confirm-rehome">
+      <p id="confirm-text"></p>
+      <div class="actions">
+        <button type="button" id="confirm-keep" autofocus>Keep</button>
+        <button type="button" class="primary" id="confirm-go">Rehome</button>
+      </div>
+    </dialog>
+  </body>
+</html>
