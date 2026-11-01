@@ -42,6 +42,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Puppet seams and the light magenta halo around the cat outline; the sleeping "z" now starts above the head, and pose cross-fades no longer turn the cat see-through halfway ([#21](https://github.com/darth-dodo/windowsill/pull/21)).
 - Petting works in the real app: strokes are read from the system cursor because macOS does not send mouse moves to the unfocused overlay.
 - Safer boot and quiet pets during Nap time: quitting always saves even if a boot step fails, background errors are logged instead of unhandled, and pets that are curling up or fading cannot be tapped, stroked or dragged ([#24](https://github.com/darth-dodo/windowsill/pull/24)).
-- Cats have noses again: the generated nose is only a few pixels at sprite size, so the 16 colour limit merged it into the fur. The art build now keeps it, in the one nose colour every coat shares.
+- Cats have noses again: the generated nose is only a few pixels at sprite size, so the 16 colour limit merged it into the fur. The art build now keeps it, in the one nose colour every coat shares ([#27](https://github.com/darth-dodo/windowsill/pull/27)).
 
 [Unreleased]: https://github.com/darth-dodo/windowsill/commits/main
