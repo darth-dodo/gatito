@@ -7,7 +7,7 @@ import { COLOURS, SPECIES, type Colour, type Species } from '../../src/brain/typ
 import { ART_CELL, PART_NAMES, POSE_NAMES, WALK_FRAME_NAMES } from '../../src/render/artNames';
 import { defringe } from './defringe';
 import { PLACEHOLDER_COATS, writePlaceholders } from './placeholder';
-import { isKey, recolour } from './recolour';
+import { isKey, KEPT_COLOURS, recolour } from './recolour';
 
 const CELL = ART_CELL;
 const COLUMNS = 5;
@@ -21,6 +21,19 @@ interface Rig {
 
 function readRig(species: Species): Rig {
   return JSON.parse(readFileSync(join(ROOT, 'art/rig', `${species}.json`), 'utf8')) as Rig;
+}
+
+/** The pink of a generated cat's nose, as it comes out of the image model. */
+const GENERATED_NOSE: readonly [number, number, number] = [233, 125, 125];
+/** Colour distance within which a pixel counts as nose; the pinkest inner-ear pixels sit about 23 away. */
+const NOSE_RADIUS = 16;
+/** The one nose colour the sheets use, which recolouring keeps in every coat. */
+const NOSE = KEPT_COLOURS[3];
+
+/** True for a generated nose pink, or the sheets' own nose colour. */
+export function isNosePink(r: number, g: number, b: number): boolean {
+  const near = (c: readonly number[]) => Math.hypot(r - c[0], g - c[1], b - c[2]) <= NOSE_RADIUS;
+  return near(GENERATED_NOSE) || near(NOSE);
 }
 
 /** Removes the magenta key, snaps to the art grid (nearest neighbour) and limits to 16 colours. */
@@ -37,10 +50,43 @@ export async function prepare(file: string, name: string): Promise<Buffer> {
     .raw()
     .toBuffer();
   defringe(snapped, CELL, CELL);
-  const small = await sharp(snapped, { raw: { width: CELL, height: CELL, channels: 4 } })
-    .png({ palette: true, colours: MAX_COLOURS, dither: 0 })
-    .toBuffer();
-  return sharp(small).ensureAlpha().raw().toBuffer();
+  // The nose is only a pixel or three at this size, too few to earn a palette slot, so the colour limit
+  // would merge it into the fur. It is painted back afterwards in the one nose colour.
+  const nose: number[] = [];
+  for (let i = 0; i < snapped.length; i += 4) {
+    if (snapped[i + 3] > 0 && isNosePink(snapped[i], snapped[i + 1], snapped[i + 2])) nose.push(i);
+  }
+  // Art that already fits (a cut part, nose aside) is not quantised again, which could merge its colours.
+  const out = fitsPalette(snapped, nose)
+    ? clearTransparent(snapped)
+    : await sharp(
+        await sharp(snapped, { raw: { width: CELL, height: CELL, channels: 4 } })
+          .png({ palette: true, colours: MAX_COLOURS, dither: 0 })
+          .toBuffer(),
+      )
+        .ensureAlpha()
+        .raw()
+        .toBuffer();
+  for (const i of nose) out.set(NOSE, i);
+  return out;
+}
+
+/** Zeroes the colour of fully transparent pixels in place, as the quantiser does, and returns the buffer. */
+function clearTransparent(data: Buffer): Buffer {
+  for (let i = 0; i < data.length; i += 4) if (data[i + 3] === 0) data.fill(0, i, i + 4);
+  return data;
+}
+
+/** True when the image, leaving out the given nose pixels, has at most MAX_COLOURS colours (transparent counts). */
+function fitsPalette(data: Buffer, nose: readonly number[]): boolean {
+  const skip = new Set(nose);
+  const colours = new Set<number>();
+  for (let i = 0; i < data.length; i += 4) {
+    if (skip.has(i)) continue;
+    colours.add(data[i + 3] === 0 ? -1 : ((data[i] << 16) | (data[i + 1] << 8) | data[i + 2]) * 256 + data[i + 3]);
+    if (colours.size > MAX_COLOURS) return false;
+  }
+  return true;
 }
 
 export async function buildAtlas(
