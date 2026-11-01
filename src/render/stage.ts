@@ -3,7 +3,7 @@ import { TUNING } from '../brain/tuning';
 import type { Pet } from '../brain/types';
 import type { Body, Position } from '../sim/world';
 import { PART_NAMES, type PartName } from './artNames';
-import type { FloatingZ, Heart } from './effects';
+import type { FloatingZ, Heart, Sparkle } from './effects';
 import { fadeKey, nextFade, NO_FADE, topAlpha, type FadeState } from './fade';
 import { CAT_BOX, CELL, RIG, type RigFrame } from './rig';
 
@@ -18,6 +18,10 @@ const HEART_LIGHT = 0xff6f91;
 const HEART_SHADOW = 0x5c1f36;
 const HEART_ROWS = ['.#.#.', '#####', '#####', '.###.', '..#..'] as const;
 const HEART_BLOCK = 2;
+const SPARKLE_LIGHT = 0xfff3a3;
+const SPARKLE_SHADOW = 0x6b5a12;
+const SPARKLE_ROWS = ['..#..', '..#..', '#####', '..#..', '..#..'] as const;
+const SPARKLE_BLOCK = 2;
 
 interface Look {
   root: Container;
@@ -32,6 +36,7 @@ interface Entry {
   facing: 1 | -1;
   fx: Container;
   hearts: Container;
+  sparkles: Container;
   sheet: Spritesheet;
 }
 
@@ -57,6 +62,7 @@ export class PetStage {
   private readonly entries = new Map<string, Entry>();
   private readonly zGlyph = pixelGlyph(Z_ROWS, Z_BLOCK, Z_LIGHT, Z_SHADOW);
   private readonly heartGlyph = pixelGlyph(HEART_ROWS, HEART_BLOCK, HEART_LIGHT, HEART_SHADOW);
+  private readonly sparkleGlyph = pixelGlyph(SPARKLE_ROWS, SPARKLE_BLOCK, SPARKLE_LIGHT, SPARKLE_SHADOW);
 
   constructor(app: Application) {
     app.stage.addChild(this.layer);
@@ -74,9 +80,12 @@ export class PetStage {
     const hearts = new Container();
     hearts.scale.set(TUNING.renderScale);
     hearts.zIndex = 2;
-    outer.addChild(looks[0].root, looks[1].root, fx, hearts);
+    const sparkles = new Container();
+    sparkles.scale.set(TUNING.renderScale);
+    sparkles.zIndex = 2;
+    outer.addChild(looks[0].root, looks[1].root, fx, hearts, sparkles);
     this.layer.addChild(outer);
-    this.entries.set(pet.id, { outer, looks, fade: NO_FADE, facing: 1, fx, hearts, sheet: atlas });
+    this.entries.set(pet.id, { outer, looks, fade: NO_FADE, facing: 1, fx, hearts, sparkles, sheet: atlas });
   }
 
   remove(id: string): void {
@@ -142,6 +151,13 @@ export class PetStage {
     const e = this.entries.get(id);
     if (!e) return;
     this.drawGlyphs(e.hearts, this.heartGlyph, hearts, e.facing);
+  }
+
+  /** The sparkle of a first learned trick; an empty list clears it. */
+  drawSparkles(id: string, sparkles: readonly Sparkle[]): void {
+    const e = this.entries.get(id);
+    if (!e) return;
+    this.drawGlyphs(e.sparkles, this.sparkleGlyph, sparkles, e.facing);
   }
 
   private drawGlyphs(

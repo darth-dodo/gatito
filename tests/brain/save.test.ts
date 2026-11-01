@@ -104,3 +104,22 @@ describe('save file', () => {
     expect(reason(mutated((p) => (p.colour = 'purple')))).toMatch(/colour/);
   });
 });
+
+describe('celebrated field', () => {
+  it('round trips an optional celebrated map', () => {
+    const p = pet('a', { celebrated: { whistle: 'spin', clap: 'sit-up' } });
+    const r = parseSave(serialise(save([p])));
+    expect(r.ok && r.save.pets[0]).toEqual(p);
+  });
+
+  it('accepts saves without celebrated', () => {
+    const r = parseSave(serialise(save([pet('a')])));
+    expect(r.ok && r.save.pets[0]!.celebrated).toBeUndefined();
+  });
+
+  it('rejects an unknown celebrated cue or trick', () => {
+    expect(reason(mutated((p) => { p.celebrated = { bark: 'spin' }; }))).toMatch(/celebrated/);
+    expect(reason(mutated((p) => { p.celebrated = { whistle: 'fly' }; }))).toMatch(/trick/);
+    expect(reason(mutated((p) => { p.celebrated = 3; }))).toMatch(/celebrated/);
+  });
+});

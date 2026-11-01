@@ -93,6 +93,8 @@ export class PetController {
   private lastX: number;
   /** Set while a napping cat's quick stretch plays before it shifts aside. */
   private wokenByCursor = false;
+  /** The animation started by `start`; `current` is replaced whenever anything new plays. */
+  private action: Current | null = null;
 
   constructor(pet: Pet, body: Body, rng: Rng) {
     this.pet = pet;
@@ -111,8 +113,14 @@ export class PetController {
     return ACTIVE.has(this.current.name) ? 'active' : 'resting';
   }
 
-  start(action: ControllerAction): void {
-    if (this.body.held || !this.body.grounded) return;
+  /** True once the last started action has ended (or never began). */
+  actionDone(): boolean {
+    return this.action === null || this.current !== this.action;
+  }
+
+  /** Returns false, and does nothing, if the pet is held or in the air. */
+  start(action: ControllerAction): boolean {
+    if (this.body.held || !this.body.grounded) return false;
     this.body.vx = 0;
     if (action.kind === 'trick') {
       this.play(action.trick, { kind: 'timed', seconds: ANIM_SECONDS[action.trick] });
@@ -122,16 +130,18 @@ export class PetController {
       const dx = action.x - this.body.x;
       if (Math.abs(dx) <= ARRIVE_PX) {
         this.play('idle-sit', { kind: 'timed', seconds: this.span('idle-sit') });
-        return;
+      } else {
+        this.body.facing = dx > 0 ? 1 : -1;
+        this.body.vx = this.body.facing * WALK_SPEED;
+        this.play('walk', { kind: 'approach', x: action.x, then: 'idle-sit', seconds: this.span('idle-sit') });
       }
-      this.body.facing = dx > 0 ? 1 : -1;
-      this.body.vx = this.body.facing * WALK_SPEED;
-      this.play('walk', { kind: 'approach', x: action.x, then: 'idle-sit', seconds: this.span('idle-sit') });
     } else {
       const c = this.lastCursor;
       const dir = c ? (c.x > this.centre() ? -1 : 1) : (-this.body.facing as 1 | -1);
       this.walk('wander', dir, WALK_AWAY_PX, WALK_SPEED);
     }
+    this.action = this.current;
+    return true;
   }
 
   update(rawDt: number, ctx: ControllerContext): void {

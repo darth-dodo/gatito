@@ -4,8 +4,13 @@ import { newPairings } from '../../src/brain/learning';
 import { seededRng } from '../../src/brain/rng';
 import { TUNING } from '../../src/brain/tuning';
 import type { Mood, Pet } from '../../src/brain/types';
+import { CueRing, cueAt } from '../../src/overlay/cueRing';
 import { HELD_HITBOX_PAD_PX, InputRouter, cursorEscapedHold } from '../../src/overlay/input';
+import { rewardMood } from '../../src/brain/mood';
+import type { Rng } from '../../src/brain/rng';
+import { ANIM_SECONDS } from '../../src/render/rig';
 import { PetController } from '../../src/sim/controller';
+import { PetTrainer } from '../../src/sim/trickSession';
 import { World, type Body } from '../../src/sim/world';
 
 const floor: Floor = { x: 0, y: 0, width: 1000, bottom: 800 };
@@ -48,6 +53,9 @@ interface Setup {
   router: InputRouter;
   onCueRequest: ReturnType<typeof vi.fn>;
   onTap: ReturnType<typeof vi.fn>;
+  ring: CueRing;
+  onCue: ReturnType<typeof vi.fn>;
+  onPetted: ReturnType<typeof vi.fn>;
 }
 
 function setup(cats: { id: string; x: number; mood?: Mood }[]): Setup {
@@ -59,8 +67,11 @@ function setup(cats: { id: string; x: number; mood?: Mood }[]): Setup {
   });
   const onCueRequest = vi.fn();
   const onTap = vi.fn();
-  const router = new InputRouter({ pets, world, onCueRequest, onTap });
-  return { world, pets, router, onCueRequest, onTap };
+  const ring = new CueRing();
+  const onCue = vi.fn();
+  const onPetted = vi.fn(() => false);
+  const router = new InputRouter({ pets, world, onCueRequest, onTap, ring, onCue, onPetted, isTraining: () => false });
+  return { world, pets, router, onCueRequest, onTap, ring, onCue, onPetted };
 }
 
 /** Sweeps back and forth across a cat at x 400..484: one stroke per sweep, starting at time t0. */
@@ -150,6 +161,10 @@ describe('InputRouter strokes come only from the host cursor', () => {
       world,
       onCueRequest,
       onTap: vi.fn(),
+      ring: new CueRing(),
+      onCue: () => undefined,
+      onPetted: () => false,
+      isTraining: () => false,
       boxOf: (b) => ({ x: b.x - 50, y: b.y, width: b.width, height: b.height }),
     });
     router.pointerDown(470, 760, 2); // on the body, but past the drawn cat
@@ -442,6 +457,123 @@ describe('InputRouter pick up and drop', () => {
     router.pointerDown(420, 760, 2);
     expect(onCueRequest).toHaveBeenCalledWith('mochi');
     expect(pickUp).not.toHaveBeenCalled();
+  });
+});
+
+describe('InputRouter cue ring', () => {
+  const screen = { x: 0, y: 0, width: 1000, height: 800 };
+  const centreOf = (r: { x: number; y: number; width: number; height: number }) => ({
+    x: r.x + r.width / 2,
+    y: r.y + r.height / 2,
+  });
+
+  it('a press on a cue button chooses that cue for the ring pet and does nothing else', () => {
+    const { router, world, ring, onCue, onTap } = setup([{ id: 'mochi', x: 400 }]);
+    const pickUp = vi.spyOn(world, 'pickUp');
+    ring.open('mochi', { x: 442, y: 760 }, screen);
+    const clap = ring.current()!.layout.find((l) => l.cue === 'clap')!;
+    const p = centreOf(clap.rect);
+    router.pointerDown(p.x, p.y, 0);
+    router.pointerMove(p.x + 20, p.y, 1);
+    router.pointerUp(p.x + 20, p.y, 1);
+    expect(onCue).toHaveBeenCalledExactlyOnceWith('mochi', 'clap');
+    expect(ring.isOpen()).toBe(false);
+    expect(pickUp).not.toHaveBeenCalled();
+    expect(onTap).not.toHaveBeenCalled();
+  });
+
+  it('a right press on a cue button only closes the ring', () => {
+    const { router, ring, onCue, onCueRequest } = setup([{ id: 'mochi', x: 400 }]);
+    ring.open('mochi', { x: 442, y: 600 }, screen);
+    const p = centreOf(ring.current()!.layout.find((l) => l.cue === 'whistle')!.rect);
+    router.pointerDown(p.x, p.y, 2);
+    expect(ring.isOpen()).toBe(false);
+    expect(onCue).not.toHaveBeenCalled();
+    expect(onCueRequest).not.toHaveBeenCalled();
+  });
+
+  it('clicking outside the ring closes it without choosing a cue', () => {
+    const { router, ring, onCue } = setup([{ id: 'mochi', x: 400 }]);
+    ring.open('mochi', { x: 442, y: 760 }, screen);
+    router.pointerDown(50, 50, 0);
+    expect(ring.isOpen()).toBe(false);
+    expect(onCue).not.toHaveBeenCalled();
+  });
+
+  it('a press on a pet outside the ring closes it and still taps the pet', () => {
+    const { router, ring, onCue, onTap } = setup([{ id: 'mochi', x: 400 }]);
+    ring.open('mochi', { x: 442, y: 760 }, screen);
+    // A corner of the cat that no button covers.
+    expect(cueAt(ring.current()!.layout, { x: 405, y: 795 })).toBeNull();
+    router.pointerDown(405, 795, 0);
+    router.pointerUp(405, 795, 1);
+    expect(ring.isOpen()).toBe(false);
+    expect(onCue).not.toHaveBeenCalled();
+    expect(onTap).toHaveBeenCalledWith('mochi');
+  });
+
+  it('reports every stroke and tap to onPetted, for the reward window', () => {
+    const { router, onPetted } = setup([{ id: 'mochi', x: 400 }]);
+    stroke(router, 2, 0);
+    const strokes = onPetted.mock.calls.reduce((n, [, k]) => n + (k as number), 0);
+    expect(strokes).toBe(2);
+    expect(onPetted.mock.calls.every(([id]) => id === 'mochi')).toBe(true);
+    router.pointerDown(442, 760, 0);
+    router.pointerUp(442, 760, 5);
+    expect(onPetted).toHaveBeenLastCalledWith('mochi', 1);
+  });
+});
+
+describe('InputRouter with a trainer', () => {
+  const fixed = (v: number): Rng => ({ next: () => v });
+
+  /** One cat at x 400 whose router reports petting to a real PetTrainer, as the overlay does. */
+  function trained(mood: Mood = { affection: 60, energy: 60 }) {
+    const world = new World(floor);
+    const b = body('mochi', 400);
+    world.add(b);
+    const controller = new PetController(pet('mochi', mood), b, seededRng(1));
+    const trainer = new PetTrainer(controller, fixed(0), () => b.held || !b.grounded);
+    const router = new InputRouter({
+      pets: [{ body: b, controller }],
+      world,
+      ring: new CueRing(),
+      onCueRequest: () => undefined,
+      onTap: () => undefined,
+      onCue: () => undefined,
+      onPetted: () => trainer.petted().some((e) => e.kind === 'rewarded'),
+      isTraining: () => trainer.phase() === 'playing',
+    });
+    const run = (seconds: number): void => {
+      for (let t = 0; t < seconds; t += FRAME) {
+        controller.update(FRAME, { cursor: null, userIdleSeconds: 0, floor });
+        trainer.update(FRAME);
+      }
+    };
+    return { controller, trainer, router, run };
+  }
+
+  it('a reward stroke raises affection by exactly rewardMood, not stroke affection on top', () => {
+    const { controller, trainer, router, run } = trained();
+    trainer.cue('whistle');
+    run(ANIM_SECONDS.spin + 0.3);
+    expect(trainer.phase()).toBe('window');
+    const before = controller.pet.mood;
+    router.pointerDown(442, 760, 0);
+    router.pointerUp(442, 760, 100);
+    expect(controller.pet.mood.affection).toBe(rewardMood(before).affection);
+  });
+
+  it('strokes and taps during a trick do not start a purr, so the round follows the trick', () => {
+    const { controller, trainer, router } = trained();
+    trainer.cue('whistle');
+    for (let i = 0; i < TUNING.tapsForPurr + 1; i++) {
+      router.pointerDown(442, 760, 0);
+      router.pointerUp(442, 760, 100 + i * 0.1);
+    }
+    stroke(router, TUNING.strokesForPurr + 1, 101);
+    expect(controller.anim().name).toBe('spin');
+    expect(trainer.phase()).toBe('playing');
   });
 });
 

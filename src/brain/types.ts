@@ -39,4 +39,6 @@ export interface Pet {
   pairings: Pairings;
   /** The trick currently learned for each cue; persisted so fading has hysteresis. */
   learned: Partial<Record<Cue, Trick>>;
+  /** Cues whose first-learned sparkle has already played; survives restarts. */
+  celebrated?: Partial<Record<Cue, Trick>>;
 }
