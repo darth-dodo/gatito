@@ -99,6 +99,18 @@ describe('defringe, light magenta halo', () => {
     }
   });
 
+  it('clears a saturated rose at the silhouette edge, by design', () => {
+    // The old case kept this rose. At the edge it cannot be told from the keyed halo, so it goes;
+    // the same rose away from the edge is kept (next test). The nose beside it stays.
+    const c = canvas(6, 3);
+    for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) c.set(x, y, [224, 136, 58]);
+    c.set(3, 1, [232, 144, 154]);
+    c.set(4, 1, [220, 90, 150]);
+    defringe(c.data, 6, 3);
+    expect(c.px(3, 1)).toEqual([232, 144, 154, 255]);
+    expect(c.px(4, 1)[3]).toBe(0);
+  });
+
   it('keeps interior pinks (nose, inner ear, rose) away from the edge', () => {
     const c = canvas(11, 11);
     for (let y = 0; y < 11; y++) for (let x = 0; x < 11; x++) c.set(x, y, [224, 136, 58]);
