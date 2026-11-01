@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 import { Application, UPDATE_PRIORITY, type Spritesheet } from 'pixi.js';
 import type { Floor, Point, Rect } from '../ipc';
 import { activeSeconds, clampFrameDelta } from '../brain/clock';
@@ -118,6 +117,9 @@ function hitboxPusher(
     void host.setHitboxes(rects);
   };
 }
+
+/** `WINDOWSILL_DEBUG` at build time, injected by vite.config.ts `define`. */
+declare const __WINDOWSILL_DEBUG__: string;
 
 /** `localStorage.windowsillDebug`, or null where storage is unavailable. */
 function storedDebugFlag(): string | null {
@@ -266,7 +268,7 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
     }),
   ]);
 
-  const readout = debugEnabled(window.location.search, storedDebugFlag(), import.meta.env.WINDOWSILL_DEBUG)
+  const readout = debugEnabled(window.location.search, storedDebugFlag(), __WINDOWSILL_DEBUG__)
     ? frameReadout(document.body)
     : null;
 

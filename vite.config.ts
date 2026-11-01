@@ -7,8 +7,10 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig({
   // Keep Vite from obscuring Rust errors.
   clearScreen: false,
-  // WINDOWSILL_DEBUG=1 turns on the frame-time readout (import.meta.env.WINDOWSILL_DEBUG).
-  envPrefix: ["VITE_", "WINDOWSILL_"],
+  // WINDOWSILL_DEBUG=1 at build time turns on the frame-time readout; only this one variable is exposed.
+  define: {
+    __WINDOWSILL_DEBUG__: JSON.stringify(process.env.WINDOWSILL_DEBUG ?? ""),
+  },
   build: {
     rollupOptions: {
       // The app overlay, the New pet window, plus a browser demo of the same pets on a pretend desktop.
