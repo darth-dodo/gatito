@@ -141,6 +141,23 @@ describe('InputRouter petting', () => {
 });
 
 describe('InputRouter strokes come only from the host cursor', () => {
+  it('hit tests the box the pet was drawn in, not its body', () => {
+    const { world, pets } = setup([{ id: 'a', x: 400 }]);
+    const onCueRequest = vi.fn<(petId: string) => void>();
+    // Drawn 50 px left of the body, as when interpolation trails a fast move.
+    const router = new InputRouter({
+      pets,
+      world,
+      onCueRequest,
+      onTap: vi.fn(),
+      boxOf: (b) => ({ x: b.x - 50, y: b.y, width: b.width, height: b.height }),
+    });
+    router.pointerDown(470, 760, 2); // on the body, but past the drawn cat
+    expect(onCueRequest).not.toHaveBeenCalled();
+    router.pointerDown(360, 760, 2); // on the drawn cat
+    expect(onCueRequest).toHaveBeenCalledWith('a');
+  });
+
   it('pointer moves without a button never stroke', () => {
     const { router, pets } = setup([{ id: 'mochi', x: 400 }]);
     for (let i = 0; i < 6; i++) router.pointerMove(i % 2 ? 420 : 450, 760, 0);

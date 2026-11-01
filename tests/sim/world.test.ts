@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Floor } from '../../src/ipc';
 import { TUNING } from '../../src/brain/tuning';
-import { lerpPosition, World, type Body } from '../../src/sim/world';
+import { drawnBox, lerpPosition, World, type Body } from '../../src/sim/world';
 
 const floor: Floor = { x: 0, y: 0, width: 1000, bottom: 800 };
 
@@ -143,6 +143,20 @@ describe('render interpolation', () => {
     expect(get(w).x).toBeCloseTo(101);
     expect(w.alpha()).toBeCloseTo(0.5);
     expect(w.drawPosition(get(w)).x).toBeCloseTo(100.5);
+  });
+
+  it('rounds the drawn box from the interpolated position, as the stage draws it', () => {
+    const b = body({ vx: 60 });
+    expect(drawnBox(b, { x: 100.5, y: 40.4 })).toEqual({ x: 101, y: 40, width: b.width, height: b.height });
+    const w = new World(floor);
+    w.add(b);
+    w.step(TUNING.simStepSeconds);
+    w.step(TUNING.simStepSeconds * 0.75); // drawn three quarters of the way from 100 to 101
+    expect(get(w).x).toBeCloseTo(101);
+    expect(w.drawnBox(get(w)).x).toBe(101);
+    w.step(TUNING.simStepSeconds * 0.5); // a new step lands (102); drawn a quarter of the way from 101
+    expect(get(w).x).toBeCloseTo(102);
+    expect(w.drawnBox(get(w)).x).toBe(101);
   });
 
   it('snaps on jumps instead of sliding', () => {

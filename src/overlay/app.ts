@@ -14,7 +14,7 @@ import { CAT_BOX, headTop, rigPose } from '../render/rig';
 import { PetStage } from '../render/stage';
 import { PetController } from '../sim/controller';
 import { NapTime, callOverX } from './napTime';
-import { World, type Body } from '../sim/world';
+import { World, type Body, type Box } from '../sim/world';
 import { HELD_HITBOX_PAD_PX, InputRouter, cursorEscapedHold } from './input';
 
 /** Hit boxes go to the host at most this often. */
@@ -94,15 +94,19 @@ function dropBody(id: string, floor: Floor, x01: number): Body {
  * Sends every pet's rect when any of them moved, throttled. A held pet's rect, padded, goes
  * every frame so the drag keeps the mouse.
  */
-function hitboxPusher(host: PetHost): (bodies: readonly Body[], now: number, heldId: string | null) => void {
+function hitboxPusher(
+  host: PetHost,
+  boxOf: (b: Body) => Box,
+): (bodies: readonly Body[], now: number, heldId: string | null) => void {
   let lastKey = '';
   let lastAt = -Infinity;
   return (bodies, now, heldId) => {
     const rects: Rect[] = bodies.map((b) => {
       const pad = b.id === heldId ? HELD_HITBOX_PAD_PX : 0;
+      const box = boxOf(b);
       return {
-        x: Math.round(b.x) - pad,
-        y: Math.round(b.y) - pad,
+        x: box.x - pad,
+        y: box.y - pad,
         width: b.width + 2 * pad,
         height: b.height + 2 * pad,
       };
@@ -208,7 +212,7 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
   let cursor: Point | null = null;
   const world = new World(floor);
   const stage = new PetStage(app);
-  const pushHitboxes = hitboxPusher(host);
+  const pushHitboxes = hitboxPusher(host, (b) => world.drawnBox(b));
   const pets: Living[] = [];
   const nap = new NapTime(options.napTime ?? false);
   let napT = 0;
@@ -245,6 +249,7 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
     /** Task 13 opens the cue ring here. */
     onCueRequest: () => undefined,
     onTap: (id) => tappedAt.set(id, performance.now() / 1000),
+    boxOf: (b) => world.drawnBox(b),
   });
   const offPointer = listenPointer(app.canvas, router);
 

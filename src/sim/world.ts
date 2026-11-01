@@ -20,6 +20,18 @@ export interface Position {
 }
 
 /** Pure: the drawn position between the previous and current simulation steps; alpha 0 is prev, 1 is curr. */
+/** A pet's box as drawn: the interpolated origin rounded to whole pixels, as PetStage.draw rounds it. */
+export interface Box {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export function drawnBox(b: Body, at: Position): Box {
+  return { x: Math.round(at.x), y: Math.round(at.y), width: b.width, height: b.height };
+}
+
 export function lerpPosition(prev: Position, curr: Position, alpha: number): Position {
   return { x: prev.x + (curr.x - prev.x) * alpha, y: prev.y + (curr.y - prev.y) * alpha };
 }
@@ -79,6 +91,11 @@ export class World {
   /** Where to draw a body this frame: between its last two steps, so motion is smooth at any refresh rate. */
   drawPosition(b: Body): Position {
     return lerpPosition(this.prev.get(b.id) ?? b, b, this.alpha());
+  }
+
+  /** Where the pet was last drawn, for hit boxes and pointer hit tests. */
+  drawnBox(b: Body): Box {
+    return drawnBox(b, this.drawPosition(b));
   }
 
   pickUp(id: string, x: number, y: number): void {

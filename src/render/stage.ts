@@ -98,8 +98,9 @@ export class PetStage {
     const [ax, ay] = RIG.body.anchor;
     const pivotX = facing === 1 ? ax * CELL : CELL - ax * CELL;
     e.outer.position.set(
-      Math.round(at.x + (pivotX - CAT_BOX.left) * s),
-      Math.round(at.y + (ay * CELL - CAT_BOX.top) * s),
+      // Origin and offset are rounded apart so the sprite sits exactly on drawnBox (sim/world).
+      Math.round(at.x) + Math.round((pivotX - CAT_BOX.left) * s),
+      Math.round(at.y) + Math.round((ay * CELL - CAT_BOX.top) * s),
     );
 
     // The base look stays at full alpha underneath; a new look fades in on top of it.
