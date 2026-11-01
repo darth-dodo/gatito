@@ -82,7 +82,7 @@ async function startPreview(container: HTMLElement, mood: Mood): Promise<(pet: P
   let species: Species = 'cat';
   app.ticker.add((ticker) => {
     t += ticker.deltaMS / 1000;
-    stage.draw(PREVIEW_ID, body, rigPose('idle-sit', t, mood, species));
+    stage.draw(PREVIEW_ID, body, rigPose('idle-sit', t, mood, { species }));
   });
   // Black and white are coats of both species, so the preview is keyed on both.
   let shown: string | null = null;
