@@ -34,20 +34,21 @@ export function tileBounds(data: Buffer, width: number, height: number, channels
   return { left, top, width: right - left + 1, height: bottom - top + 1 };
 }
 
-/** Replaces white pixels in place with the nearest non-white pixel in the same row. */
+/**
+ * Replaces, in place, the white background runs at each end of a row with the first art pixel inward
+ * from that end. White inside the art (eye glints, highlights) is left alone.
+ */
 export function fillWhiteFromRow(data: Buffer, width: number, height: number, channels: number): void {
+  const px = (row: number, x: number) => (row + x) * channels;
   for (let y = 0; y < height; y++) {
     const row = y * width;
-    for (let x = 0; x < width; x++) {
-      const i = (row + x) * channels;
-      if (!isWhite(data, i)) continue;
-      for (let d = 1; d < width; d++) {
-        const src = [x - d, x + d].find((sx) => sx >= 0 && sx < width && !isWhite(data, (row + sx) * channels));
-        if (src === undefined) continue;
-        data.copy(data, i, (row + src) * channels, (row + src) * channels + channels);
-        break;
-      }
-    }
+    let first = 0;
+    while (first < width && isWhite(data, px(row, first))) first++;
+    if (first === width) continue;
+    let last = width - 1;
+    while (isWhite(data, px(row, last))) last--;
+    for (let x = 0; x < first; x++) data.copy(data, px(row, x), px(row, first), px(row, first) + channels);
+    for (let x = last + 1; x < width; x++) data.copy(data, px(row, x), px(row, last), px(row, last) + channels);
   }
 }
 

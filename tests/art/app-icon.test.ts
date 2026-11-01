@@ -34,6 +34,12 @@ describe('app icon helpers', () => {
     expect([...data]).toEqual([BLUE, BLUE, BLUE, BROWN, BROWN, BROWN].flat());
   });
 
+  it('keeps white inside the art, such as eye glints', () => {
+    const data = image([[WHITE, BLUE, WHITE, BLUE, WHITE]]);
+    fillWhiteFromRow(data, 5, 1, 3);
+    expect([...data]).toEqual([BLUE, BLUE, WHITE, BLUE, BLUE].flat());
+  });
+
   it('leaves an all-white row alone', () => {
     const data = image([[WHITE, WHITE]]);
     fillWhiteFromRow(data, 2, 1, 3);
