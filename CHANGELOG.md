@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tricks: right-click a pet to open the cue ring (🎵 👏 🪶 🐟), pick a cue and the pet performs a trick; pet it within 3 seconds after the trick to reward it and it purrs. Rewarded pairings grow until the trick is learned, marked by a one-time sparkle. Tired pets yawn and unhappy ones may walk away. The ring closes on a click outside it, after 8 seconds, or when the cursor moves about 200 px away.
 - Create, edit and rehome pets in a New pet window (name, coat, personality, with a live preview); pets, moods and learned tricks are saved and come back after a restart; a bad save file is moved aside and the first run opens New pet ([#19](https://github.com/darth-dodo/windowsill/pull/19)).
 - Menu bar menu: New pet, per-pet Edit, Call over and Rehome, Nap time (remembered) and Launch at login; mood only changes while you are at the computer ([#22](https://github.com/darth-dodo/windowsill/pull/22)).
-- App icon: an orange tabby peeking over the windowsill, masked to the macOS icon grid. `npm run art:icon` rebuilds every bundle size from `art/source/app-icon/source.png`.
+- App icon: an orange tabby peeking over the windowsill, masked to the macOS icon grid. `npm run art:icon` rebuilds every bundle size from `art/source/app-icon/source.png` ([#26](https://github.com/darth-dodo/windowsill/pull/26)).
 
 ### Changed
 
