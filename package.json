@@ -16,6 +16,7 @@
     "check": "npm run typecheck && npm run test:coverage && cd src-tauri && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test",
     "art": "tsx scripts/art/build.ts",
     "art:cut": "tsx scripts/art/cut-parts.ts",
+    "art:icon": "tsx scripts/art/app-icon.ts && tauri icon src-tauri/icons/app-icon.png && rm -rf src-tauri/icons/android src-tauri/icons/ios src-tauri/icons/64x64.png",
     "demo:record": "tsx scripts/demo/record.ts"
   },
   "dependencies": {
