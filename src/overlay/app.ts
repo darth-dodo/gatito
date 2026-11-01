@@ -7,12 +7,15 @@ import { seededRng } from '../brain/rng';
 import { TUNING } from '../brain/tuning';
 import type { Pet } from '../brain/types';
 import { loadAtlas } from '../render/atlas';
-import { floatingZs, heartBurst, risingHearts } from '../render/effects';
+import { floatingZs, heartBurst, risingHearts, sparkleBurst } from '../render/effects';
+import { CueRingView } from '../render/cueRingView';
 import { CAT_BOX, rigPose } from '../render/rig';
 import { PetStage } from '../render/stage';
 import { PetController } from '../sim/controller';
+import { PetTrainer } from '../sim/trickSession';
 import { NapTime, callOverX } from './napTime';
 import { World, type Body } from '../sim/world';
+import { CueRing } from './cueRing';
 import { HELD_HITBOX_PAD_PX, InputRouter, cursorEscapedHold } from './input';
 
 /** Hit boxes go to the host at most this often. */
@@ -46,6 +49,12 @@ export interface PetOptions {
 interface Living {
   body: Body;
   controller: PetController;
+  trainer: PetTrainer;
+}
+
+/** The usable screen as a rect, for laying out the cue ring. */
+function floorRect(f: Floor): Rect {
+  return { x: f.x, y: f.y, width: f.width, height: f.bottom - f.y };
 }
 
 /** Places pet `index` of `count` evenly along the floor; a lone pet starts in the middle. */
@@ -82,14 +91,16 @@ function dropBody(id: string, floor: Floor, x01: number): Body {
 }
 
 /**
- * Sends every pet's rect when any of them moved, throttled. A held pet's rect, padded, goes
- * every frame so the drag keeps the mouse.
+ * Sends every pet's rect, plus `extra` (the open cue ring's buttons), when any of them changed,
+ * throttled. A held pet's rect, padded, goes every frame so the drag keeps the mouse.
  */
-function hitboxPusher(host: PetHost): (bodies: readonly Body[], now: number, heldId: string | null) => void {
+function hitboxPusher(
+  host: PetHost,
+): (bodies: readonly Body[], now: number, heldId: string | null, extra: readonly Rect[]) => void {
   let lastKey = '';
   let lastAt = -Infinity;
-  return (bodies, now, heldId) => {
-    const rects: Rect[] = bodies.map((b) => {
+  return (bodies, now, heldId, extra) => {
+    const petRects: Rect[] = bodies.map((b) => {
       const pad = b.id === heldId ? HELD_HITBOX_PAD_PX : 0;
       return {
         x: Math.round(b.x) - pad,
@@ -98,6 +109,7 @@ function hitboxPusher(host: PetHost): (bodies: readonly Body[], now: number, hel
         height: b.height + 2 * pad,
       };
     });
+    const rects = [...petRects, ...extra];
     const key = JSON.stringify(rects);
     if (key === lastKey || (heldId === null && now - lastAt < HITBOX_MIN_INTERVAL_MS)) return;
     lastKey = key;
@@ -186,6 +198,8 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
   let cursor: Point | null = null;
   const world = new World(floor);
   const stage = new PetStage(app);
+  const ring = new CueRing();
+  const ringView = new CueRingView(app);
   const pushHitboxes = hitboxPusher(host);
   const pets: Living[] = [];
   const nap = new NapTime(options.napTime ?? false);
@@ -207,8 +221,16 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
     if (!arriving.delete(pet.id)) return;
     world.add(body);
     stage.add(pet, atlas);
-    const rng = seededRng((baseSeed + spawned++ * SEED_STRIDE) >>> 0);
-    pets.push({ body, controller: new PetController(pet, body, rng) });
+    const seed = baseSeed + spawned++ * SEED_STRIDE;
+    const controller = new PetController(pet, body, seededRng(seed >>> 0));
+    // Its own stream, so training never shifts the pet's behaviour choices.
+    const trainer = new PetTrainer(
+      controller,
+      seededRng((seed + 1) >>> 0),
+      () => body.held || !body.grounded,
+      () => nap.curled,
+    );
+    pets.push({ body, controller, trainer });
   };
 
   for (const [i, pet] of options.pets.entries()) {
@@ -217,11 +239,35 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
 
   /** When each pet was last tapped (performance.now() seconds), for its heart burst. */
   const tappedAt = new Map<string, number>();
+  /** When each pet first learned a cue (performance.now() seconds), for its sparkle. */
+  const learnedAt = new Map<string, number>();
+  const byId = (id: string): Living | undefined => pets.find((p) => p.body.id === id);
+  const noteLearned = (id: string, events: readonly { kind: string }[]): void => {
+    if (events.some((e) => e.kind === 'learned')) learnedAt.set(id, performance.now() / 1000);
+  };
   const router = new InputRouter({
     pets,
     world,
-    /** Task 13 opens the cue ring here. */
-    onCueRequest: () => undefined,
+    ring,
+    onCueRequest: (id) => {
+      const p = byId(id);
+      // Curled pets take no cues.
+      if (!p || nap.curled) return;
+      const b = p.body;
+      ring.open(id, { x: b.x + b.width / 2, y: b.y + b.height / 2 }, floorRect(floor));
+    },
+    onCue: (id, cue) => {
+      const p = byId(id);
+      if (p) noteLearned(id, p.trainer.cue(cue));
+    },
+    onPetted: (id) => {
+      const p = byId(id);
+      if (!p) return false;
+      const events = p.trainer.petted();
+      noteLearned(id, events);
+      return events.some((e) => e.kind === 'rewarded');
+    },
+    isTraining: (id) => byId(id)?.trainer.phase() === 'playing',
     onTap: (id) => tappedAt.set(id, performance.now() / 1000),
   });
   const offPointer = listenPointer(app.canvas, router);
@@ -240,7 +286,12 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
   ]);
 
   app.ticker.add((ticker) => {
-    const dt = clampFrameDelta(ticker.deltaMS / 1000) * timeScale;
+    const realDt = clampFrameDelta(ticker.deltaMS / 1000);
+    const dt = realDt * timeScale;
+    // Nap time puts the ring away with the cats.
+    if (nap.curled) ring.close();
+    ring.update(realDt, cursor);
+    ringView.draw(ring.current()?.layout ?? null);
     const userIdleSeconds = host.userIdleSeconds();
     const active = activeSeconds(dt, { userIdleSeconds, napTime: nap.on });
     const ctx = { cursor, userIdleSeconds, floor };
@@ -254,6 +305,7 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
     if (!nap.curled) for (const p of pets) p.controller.update(dt, ctx);
     else for (const p of pets) if (!p.body.held) p.body.vx = 0;
     world.step(dt);
+    for (const p of pets) noteLearned(p.body.id, p.trainer.update(dt));
 
     const nowSeconds = performance.now() / 1000;
     for (const { body: b, controller: c } of pets) {
@@ -270,9 +322,10 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
       stage.drawZs(c.pet.id, name === 'nap' || name === 'cuddle-nap' ? floatingZs(t) : []);
       const tapAge = nowSeconds - (tappedAt.get(c.pet.id) ?? -Infinity);
       stage.drawHearts(c.pet.id, name === 'purr' ? risingHearts(t) : heartBurst(tapAge));
+      stage.drawSparkles(c.pet.id, sparkleBurst(nowSeconds - (learnedAt.get(c.pet.id) ?? -Infinity)));
     }
     napT = nap.curled ? napT + dt : 0;
-    pushHitboxes(nap.hidden ? [] : world.bodies(), performance.now(), router.heldId());
+    pushHitboxes(nap.hidden ? [] : world.bodies(), performance.now(), router.heldId(), ring.rects());
   });
 
   return {
@@ -298,7 +351,11 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
       if (i < 0) return;
       world.remove(id);
       stage.remove(id);
+      if (ring.current()?.petId === id) ring.close();
+      // The pet's trainer goes with it.
       pets.splice(i, 1);
+      learnedAt.delete(id);
+      tappedAt.delete(id);
     },
     async updatePet(pet) {
       const find = (): Living | undefined => pets.find((p) => p.controller.pet.id === pet.id);

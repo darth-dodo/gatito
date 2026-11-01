@@ -84,3 +84,38 @@ export function heartBurst(age: number): Heart[] {
   }
   return out;
 }
+
+/** One sparkle star, in cell pixels relative to the body pivot (x already faces right). */
+export interface Sparkle {
+  x: number;
+  y: number;
+  alpha: number;
+  scale: number;
+}
+
+/** How long the sparkle lasts when a cat first learns a trick. */
+export const SPARKLE_SECONDS = 1.5;
+const SPARKLE_STARS = 6;
+const SPARKLE_ORIGIN = { x: 0, y: -16 } as const;
+const SPARKLE_INNER_PX = 10;
+const SPARKLE_OUTER_PX = 34;
+
+/** Pure: stars bursting outward around the cat and twinkling out, `age` seconds after it learned. */
+export function sparkleBurst(age: number): Sparkle[] {
+  if (age < 0 || age >= SPARKLE_SECONDS) return [];
+  const p = age / SPARKLE_SECONDS;
+  const out: Sparkle[] = [];
+  for (let i = 0; i < SPARKLE_STARS; i++) {
+    const angle = (i / SPARKLE_STARS) * Math.PI * 2 + p;
+    const r = SPARKLE_INNER_PX + (SPARKLE_OUTER_PX - SPARKLE_INNER_PX) * Math.sqrt(p);
+    // Each star twinkles at its own phase as the burst fades.
+    const twinkle = 0.75 + 0.25 * Math.cos(p * Math.PI * 6 + i);
+    out.push({
+      x: SPARKLE_ORIGIN.x + r * Math.cos(angle),
+      y: SPARKLE_ORIGIN.y + r * Math.sin(angle),
+      alpha: (p < 0.1 ? p / 0.1 : 1 - (p - 0.1) / 0.9) * twinkle,
+      scale: 1 - 0.4 * p,
+    });
+  }
+  return out;
+}
