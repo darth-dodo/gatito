@@ -11,6 +11,10 @@ export const TUNING = {
   strokesForPurr: 3,
   strokeWindowSeconds: 2,
   strokeMinTravelPx: 12,
+  /** Keep stroking a purring cat with at least this affection and it rolls belly up. */
+  bellyUpMinAffection: 70,
+  /** A press on a pet becomes a pick up only after the pointer moves this far with the button held. */
+  dragStartPx: 4,
   maxFrameDeltaSeconds: 0.25,
   cuddleNapIdleSeconds: 180,
   cuddleNapMinAffection: 70,

@@ -7,11 +7,12 @@ import { tickMood } from '../brain/mood';
 import { seededRng } from '../brain/rng';
 import { TUNING } from '../brain/tuning';
 import type { Colour, Pet } from '../brain/types';
-import { floatingZs } from '../render/effects';
+import { floatingZs, risingHearts } from '../render/effects';
 import { CAT_BOX, rigPose } from '../render/rig';
 import { PetStage } from '../render/stage';
 import { PetController } from '../sim/controller';
 import { World, type Body } from '../sim/world';
+import { HELD_HITBOX_PAD_PX, InputRouter, cursorEscapedHold } from './input';
 
 /** Hit boxes go to the host at most this often. */
 const HITBOX_MIN_INTERVAL_MS = 1000 / 30;
@@ -85,23 +86,65 @@ function spawnBody(id: string, floor: Floor, index: number, count: number): Body
   };
 }
 
-/** Sends every pet's rect when any of them moved, throttled. */
-function hitboxPusher(host: PetHost): (bodies: readonly Body[], now: number) => void {
+/**
+ * Sends every pet's rect when any of them moved, throttled. A held pet's rect, padded, goes
+ * every frame so the drag keeps the mouse.
+ */
+function hitboxPusher(host: PetHost): (bodies: readonly Body[], now: number, heldId: string | null) => void {
   let lastKey = '';
   let lastAt = -Infinity;
-  return (bodies, now) => {
-    const rects: Rect[] = bodies.map((b) => ({
-      x: Math.round(b.x),
-      y: Math.round(b.y),
-      width: b.width,
-      height: b.height,
-    }));
+  return (bodies, now, heldId) => {
+    const rects: Rect[] = bodies.map((b) => {
+      const pad = b.id === heldId ? HELD_HITBOX_PAD_PX : 0;
+      return {
+        x: Math.round(b.x) - pad,
+        y: Math.round(b.y) - pad,
+        width: b.width + 2 * pad,
+        height: b.height + 2 * pad,
+      };
+    });
     const key = JSON.stringify(rects);
-    if (key === lastKey || now - lastAt < HITBOX_MIN_INTERVAL_MS) return;
+    if (key === lastKey || (heldId === null && now - lastAt < HITBOX_MIN_INTERVAL_MS)) return;
     lastKey = key;
     lastAt = now;
     void host.setHitboxes(rects);
   };
+}
+
+/**
+ * Feeds the canvas's pointer events to the router. The overlay only gets them while the cursor
+ * is over a pet hit box; a pet captures the pointer as it lifts so the drag survives fast moves.
+ */
+function listenPointer(canvas: HTMLCanvasElement, router: InputRouter): Unlisten {
+  const off = new AbortController();
+  const opts = { signal: off.signal };
+  canvas.style.touchAction = 'none';
+  canvas.addEventListener(
+    'pointermove',
+    (e) => {
+      // Capture as the pet lifts, so a fast drag keeps every move and the release.
+      if (router.pointerMove(e.clientX, e.clientY, e.timeStamp / 1000, e.buttons) === 'lifted') {
+        canvas.setPointerCapture(e.pointerId);
+      }
+    },
+    opts,
+  );
+  canvas.addEventListener(
+    'pointerdown',
+    (e) => {
+      if (e.button !== 0 && e.button !== 2) return;
+      router.pointerDown(e.clientX, e.clientY, e.button);
+    },
+    opts,
+  );
+  const release = (e: PointerEvent): void => router.pointerUp(e.clientX, e.clientY);
+  canvas.addEventListener('pointerup', release, opts);
+  canvas.addEventListener('pointercancel', release, opts);
+  canvas.addEventListener('lostpointercapture', release, opts);
+  canvas.addEventListener('pointerleave', () => router.pointerLeave(), opts);
+  // The right button belongs to the cue ring, never the browser menu.
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault(), opts);
+  return () => off.abort();
 }
 
 /** Runs the pets (brain, world, controllers and PixiJS stage) inside `container`, fed by `host`. */
@@ -135,6 +178,14 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<{ s
     pets.push({ body, controller: new PetController(pet, body, rng) });
   }
 
+  const router = new InputRouter({
+    pets,
+    world,
+    /** Task 13 opens the cue ring here. */
+    onCueRequest: () => undefined,
+  });
+  const offPointer = listenPointer(app.canvas, router);
+
   const unlisten = await Promise.all([
     host.onCursor((p) => {
       cursor = p;
@@ -151,6 +202,10 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<{ s
     const active = activeSeconds(dt, { userIdleSeconds, napTime: false });
     const ctx = { cursor, userIdleSeconds, floor };
 
+    const heldId = router.heldId();
+    const held = heldId === null ? undefined : pets.find((p) => p.body.id === heldId);
+    if (held && cursorEscapedHold(held.body, cursor)) router.release();
+
     for (const p of pets) p.controller.update(dt, ctx);
     world.step(dt);
 
@@ -165,12 +220,14 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<{ s
       const { name, t } = c.anim();
       stage.draw(c.pet.id, b, rigPose(name, t, c.pet.mood));
       stage.drawZs(c.pet.id, name === 'nap' || name === 'cuddle-nap' ? floatingZs(t) : []);
+      stage.drawHearts(c.pet.id, name === 'purr' ? risingHearts(t) : []);
     }
-    pushHitboxes(world.bodies(), performance.now());
+    pushHitboxes(world.bodies(), performance.now(), router.heldId());
   });
 
   return {
     stop() {
+      offPointer();
       for (const off of unlisten) off();
       app.destroy({ removeView: true }, { children: true });
     },
