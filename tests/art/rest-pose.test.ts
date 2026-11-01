@@ -3,7 +3,9 @@ import { join } from 'node:path';
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
 import { prepare } from '../../scripts/art/build';
-import { CELL, RIG, rigPose } from '../../src/render/rig';
+import { CELL, RIGS, rigPose } from '../../src/render/rig';
+
+const RIG = RIGS.cat.parts;
 import { PART_NAMES } from '../../src/render/artNames';
 
 const ROOT = join(__dirname, '../..');

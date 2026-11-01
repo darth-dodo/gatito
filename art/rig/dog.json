@@ -1,6 +1,6 @@
 {
   "cell": 96,
-  "note": "Parts are drawn in place in the assembled standing dog. anchor is the pivot in 0..1 cell coordinates. offset is the pivot position in cell pixels relative to the body pivot. z is draw order, low first. poseTail places the tail base on each key pose (x, y in cell pixels from the body pivot), with its rest rotation and how much it moves. sitOverlay places the ears and eyes layered on the sit pose.",
+  "note": "Parts are drawn in place in the assembled standing dog. anchor is the pivot in 0..1 cell coordinates. offset is the pivot position in cell pixels relative to the body pivot. z is draw order, low first. poseTail places the tail base on each key pose (x, y in cell pixels from the body pivot), with its rest rotation and how much it moves. sitOverlay places the ears and eyes layered on the sit pose. headTop is just above the head on each look, where a napping pet's z's start.",
   "parts": {
     "body": {
       "anchor": [
@@ -202,5 +202,19 @@
       22,
       -30
     ]
+  },
+  "headTop": {
+    "puppet": {
+      "x": 28,
+      "y": -32
+    },
+    "sit": {
+      "x": 14,
+      "y": -42
+    },
+    "sleep-curl": {
+      "x": 28,
+      "y": 0
+    }
   }
 }

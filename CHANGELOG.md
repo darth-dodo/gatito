@@ -29,8 +29,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Create, edit and rehome pets in a New pet window (name, coat, personality, with a live preview); pets, moods and learned tricks are saved and come back after a restart; a bad save file is moved aside and the first run opens New pet ([#19](https://github.com/darth-dodo/windowsill/pull/19)).
 - Menu bar menu: New pet, per-pet Edit, Call over and Rehome, Nap time (remembered) and Launch at login; mood only changes while you are at the computer ([#22](https://github.com/darth-dodo/windowsill/pull/22)).
 - App icon: an orange tabby peeking over the windowsill, masked to the macOS icon grid. `npm run art:icon` rebuilds every bundle size from `art/source/app-icon/source.png` ([#26](https://github.com/darth-dodo/windowsill/pull/26)).
+- Dogs: a second species that shares every cat system (mood, petting, pick up and drop, tricks, memory) with its own look and reactions. Dogs **Wag** instead of purring, take a **Curl nap** with the nose under the tail instead of loafing, **Scratch** an ear instead of grooming, thump their tail in a sit, and wag faster the happier they are. Seven dog coats (golden, black, white, brown, spotted, tricolour, husky grey) with placeholder art for golden, black, white and brown; the save file accepts dogs in dog coats; the art pipeline recolours golden into black, white and brown; `npm run art:generate -- --species dog` prompts for dog poses; the browser demo shows two dogs.
 
 ### Changed
+
+- Per-pose tail placement and the ears and eyes layered on the sit pose moved from `rig.ts` into `art/rig/<species>.json`, so each species tunes its own puppet; cats look exactly as before.
 
 - Pet art uses a 96 by 96 grid shown at 1x instead of 48 by 48 at 2x, so generated art keeps its detail at the same size on screen; the `sit` pose is drawn without ears and eyes, which are layered on ([#14](https://github.com/darth-dodo/windowsill/pull/14)).
 - CI runs the app build in parallel and as a fast debug compile on pull requests; the full release bundle runs on main.

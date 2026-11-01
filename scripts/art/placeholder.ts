@@ -265,6 +265,8 @@ const DOG: Drawings = {
     c.ellipse(22, 28, 14, 8, ink.mid);
     c.ellipse(20, 22, 9, 2.5, ink.dark);
     c.ellipse(24, 33, 9, 3, ink.cream);
+    // Like the cut-out cat, the body image carries the head; the head part is only kept for other rigs.
+    dogHead(c, ink, 36, 19, 6);
   },
   head: (c, ink) => dogHead(c, ink, 36, 19, 6),
   'ear-near': (c, ink) => floppyEar(c, 34, 14, 9, ink.dark),
