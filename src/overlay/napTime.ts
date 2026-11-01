@@ -75,3 +75,8 @@ export class NapTime {
 export function callOverX(nap: NapTime, floor: { x: number; width: number }, width: number): number | null {
   return nap.curled ? null : floor.x + floor.width / 2 - width / 2;
 }
+
+/** The bodies that get hit boxes: none from the moment Nap time curls the pets up until they are awake again. */
+export function hitboxBodies<T>(nap: NapTime, bodies: readonly T[]): readonly T[] {
+  return nap.curled ? [] : bodies;
+}
