@@ -1,6 +1,6 @@
 {
   "cell": 96,
-  "note": "Parts are drawn in place in the assembled standing dog (cut from reference.png by scripts/art/cut-parts.ts); see cat.json for the fields. The tail art points left from its base, so on the floor its rest rotation is about 0 and clockwise lifts it.",
+  "note": "Parts are drawn in place in the assembled standing dog (cut from reference.png by scripts/art/cut-parts.ts); see cat.json for the fields. The tail art points left from its base, so on the floor its rest rotation is about 0 and clockwise lifts it. A poseTail with drawn: true means the pose image has its own tail, so the tail part is hidden there.",
   "parts": {
     "body": {
       "anchor": [
@@ -146,13 +146,15 @@
       "x": -20,
       "y": 10,
       "rotation": 3.0,
-      "swing": 0.15
+      "swing": 0.15,
+      "drawn": true
     },
     "sleep-curl": {
       "x": -32,
       "y": 0,
       "rotation": -0.3,
-      "swing": 0.3
+      "swing": 0.3,
+      "drawn": true
     },
     "belly-up": {
       "x": -32,
@@ -182,7 +184,8 @@
       "x": -10,
       "y": 24,
       "rotation": -1.5,
-      "swing": 1.4
+      "swing": 1.4,
+      "drawn": true
     }
   },
   "sitOverlay": {

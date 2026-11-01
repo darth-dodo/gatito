@@ -48,6 +48,8 @@ interface PoseTail {
   y: number;
   rotation: number;
   swing: number;
+  /** The pose image already has its tail drawn in, so the tail part is not layered on (no second tail). */
+  drawn?: boolean;
 }
 
 type Point = { x: number; y: number };
@@ -353,7 +355,7 @@ function keyPose(species: Species, pose: PoseName, anim: AnimName, t: number, mo
     x: tail.x,
     y: tail.y,
     rotation: tail.rotation + poseTailMotion(species, pose, anim, t, g),
-    visible: true,
+    visible: !tail.drawn,
   };
 
   if (pose === 'sit') {

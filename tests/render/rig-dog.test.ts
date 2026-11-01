@@ -139,6 +139,18 @@ describe('dog reactions', () => {
     expect(mean(sulky)).toBeLessThan(mean(glad) - 0.3);
   });
 
+  it('never draws two tails: poses that have their own tail hide the layered one', () => {
+    for (const anim of ['loaf', 'nap', 'cuddle-nap', 'dangle', 'chase-tail'] as const) {
+      expect(rigPose(anim, 0.5, happy, { species: 'dog' }).parts.tail!.visible, anim).toBe(false);
+    }
+    for (const anim of ['idle-sit', 'purr', 'groom', 'stretch', 'sit-up', 'belly-up', 'walk'] as const) {
+      expect(rigPose(anim, 0.5, happy, { species: 'dog' }).parts.tail!.visible, anim).toBe(true);
+    }
+    for (const anim of ['loaf', 'nap', 'dangle'] as const) {
+      expect(rigPose(anim, 0.5, happy).parts.tail!.visible, `cat ${anim}`).toBe(true);
+    }
+  });
+
   it('a dog chases its tail as a spinning ring', () => {
     const chase = samples('dog', 'chase-tail', 0, ANIM_SECONDS['chase-tail']);
     expect(chase.every((f) => f.pose === 'loaf')).toBe(true);
