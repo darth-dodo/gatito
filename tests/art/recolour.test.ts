@@ -63,6 +63,13 @@ describe('recolour', () => {
     }
   });
 
+  it('turns edge pixels blended with the magenta key into the key, so the build drops them', async () => {
+    const halo: Rgb = [214, 52, 190];
+    const out = await pixelsOf(await recolour(await toPng([halo, GOLDEN_PALETTE[2]!], 2), 'golden', 'brown'));
+    expect(out[0]).toEqual([255, 0, 255]);
+    expect(out[1]).toEqual(COAT_PALETTES.brown[2]);
+  });
+
   it('derives each species only its own plain coats', async () => {
     const px = await toPng([[0, 0, 0]], 1);
     await expect(recolour(px, 'golden', 'grey')).rejects.toThrow(/dog to grey/);

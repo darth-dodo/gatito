@@ -63,6 +63,11 @@ export interface SpeciesRig {
    * right): where a napping pet's "z"s start. Looks not listed use the standing pet's (`puppet`).
    */
   headTop: Partial<Record<PoseName, Point>> & { puppet: Point };
+  /**
+   * 1 when the ear art stands up (it folds back anticlockwise), -1 when it hangs from its root (a floppy
+   * ear swings back clockwise, away from the eye).
+   */
+  earTurn: 1 | -1;
 }
 
 export const CELL = ART_CELL;
@@ -277,7 +282,8 @@ function puppet(species: Species, anim: AnimName, t: number, mood: Mood): RigFra
   const blink = blinking(t);
   parts['eyes-open'].visible = !blink;
   parts['eyes-closed'].visible = blink;
-  const ear = earRotation(anim, t, g);
+  const turn = RIGS[species].earTurn;
+  const ear = turn * earRotation(anim, t, g);
   parts['ear-near'].rotation = ear;
   parts['ear-far'].rotation = ear;
   parts.tail.rotation = species === 'dog' ? dogTailWag(t, g) : tailSwing(t, g);
@@ -297,8 +303,8 @@ function puppet(species: Species, anim: AnimName, t: number, mood: Mood): RigFra
     parts['leg-front-far'].rotation = -FALL_LEG_SPREAD;
     parts['leg-back-near'].rotation = FALL_LEG_SPREAD;
     parts['leg-back-far'].rotation = FALL_LEG_SPREAD;
-    parts['ear-near'].rotation = -EAR_BACK_MAX;
-    parts['ear-far'].rotation = -EAR_BACK_MAX;
+    parts['ear-near'].rotation = -turn * EAR_BACK_MAX;
+    parts['ear-far'].rotation = -turn * EAR_BACK_MAX;
   } else if (anim === 'land') {
     const squash = LAND_SQUASH_PX * (1 - clamp01(t / ANIM_SECONDS.land));
     for (const p of PART_NAMES) if (!isLeg(p)) parts[p].y += squash;
@@ -354,7 +360,7 @@ function keyPose(species: Species, pose: PoseName, anim: AnimName, t: number, mo
     // A purring cat closes its eyes; a wagging dog keeps them open.
     const eyesShut =
       (anim === 'purr' && !dog) || (anim === 'yawn' && t > ANIM_SECONDS.yawn * 0.25) || blinking(t);
-    const ear = earRotation(anim, t, g);
+    const ear = rig.earTurn * earRotation(anim, t, g);
     for (const [name, [x, y]] of Object.entries(rig.sitOverlay) as [PartName, [number, number]][]) {
       const isEar = name === 'ear-near' || name === 'ear-far';
       const visible = name === 'eyes-open' ? !eyesShut : name === 'eyes-closed' ? eyesShut : true;

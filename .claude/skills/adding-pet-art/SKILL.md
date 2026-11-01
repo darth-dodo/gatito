@@ -32,7 +32,7 @@ Requirements: pixel art, side view **facing right**, on a flat magenta `#FF00FF`
    | cat | `orange-tabby` | `black` `white` `grey` | `tuxedo` `calico` `siamese` |
    | dog | `golden` | `black` `white` `brown` | `spotted` `tricolour` `husky-grey` |
 
-   A coat appears in **New pet** only once its sprite sheet exists. For a dog, `loaf` is the Curl nap (curled ring, nose tucked in), `groom` is scratching an ear with a hind leg, `sleep-curl` is lying down chin on paws, and `stretch` is a play bow; `npm run art:generate -- --species dog --coat golden` already prompts for these.
+   A coat appears in **New pet** only once its sprite sheet exists. The golden dog was made like the tabby: `npm run art:generate -- --species dog --coat golden --only reference --style art/source/cat/orange-tabby/reference.png`, then `--only tail,head,paw-raised,<poses>,walk-1..walk-6`, footprints and walk frames moved into `generated/`, then `npm run art:cut -- --species dog --coat golden`. For a dog, `loaf` is the Curl nap (curled ring, nose tucked in), `groom` is scratching an ear with a hind leg, `sleep-curl` is lying down chin on paws, and `stretch` is a play bow; `npm run art:generate -- --species dog --coat golden` already prompts for these.
 5. Commit the sources (`art/source/...`) **and** the generated sheets (`src/assets/atlas/<species>-<coat>.png` and `.json`), because CI does not run the art step with real art. If a part pivots wrongly (for example the tail swings from its middle), adjust `art/rig/<species>.json`, not the image.
 6. Run `npm run check`, then `npm run tauri dev`, and look at the pet: facing direction, blinking, tail swish and layering. Add a changelog line under `[Unreleased] > Added`, then open the PR.
 
@@ -49,4 +49,5 @@ Generate one full-body reference first, then reuse it as the reference image for
 | Transparent or white background | Flat `#FF00FF` only; it is the key colour |
 | Committing sources but not the atlas | Commit both |
 | Generating all 7 coats separately | Only the base coat (orange tabby or golden) plus the three patterned coats |
-| Tuning a dog's tail or ears in `cat.json` | Each species has its own `art/rig/<species>.json`, including `poseTail` and `sitOverlay` |
+| Tuning a dog's tail or ears in `cat.json` | Each species has its own `art/rig/<species>.json`, including `poseTail`, `sitOverlay`, `headTop` and `earTurn` (-1 for hanging ears) |
+| A new species' reference drawn at a different scale | Pass `--style art/source/cat/orange-tabby/reference.png` when generating its reference, so it matches the cat's scale, outline and baseline |

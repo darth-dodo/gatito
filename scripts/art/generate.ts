@@ -1,6 +1,6 @@
 // Generates cut-out puppet source art with OpenRouter. Usage:
 //   npm run art:generate -- --species cat --coat orange-tabby [--only tail,sit] [--reference path] [--max-calls N]
-//   npm run art:generate -- --species dog --coat golden
+//   npm run art:generate -- --species dog --coat golden [--style art/source/cat/orange-tabby/reference.png]
 // Requires OPENROUTER_API_KEY in the environment (never read from or written to disk here).
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -63,14 +63,15 @@ const DOG_SUBJECTS: Record<string, string> = {
   head: 'the head only (from the neck up) with its muzzle and nose, with the ears and the eyes painted over with plain fur so the face is blank',
   'ear-near': 'the near floppy ear only, the one hanging down from the top of the head on the side facing us',
   'ear-far': 'the far floppy ear only, the small darker ear just behind the head; no head, no body, no other ear',
+  'paw-raised': 'the near front leg only, but lifted and raised forward and up as for a high five: from the shoulder at about x 66% and y 58% of the canvas up to the open paw at about x 84% and y 30%; erase the whole rest of the dog (no body, no head, no tail, no other legs)',
   sit: 'whole dog sitting upright, side view, drawn WITHOUT ears and WITHOUT eyes (blank face), without the tail',
-  loaf: 'whole dog curled up tight in a ring, nose tucked in at its back end where its tail would cover it, eyes closed, without the tail',
+  loaf: 'whole dog lying on the floor curled up in a low ring, nose tucked in against its back legs, eyes closed, without the tail; the same size as the reference dog, only about 40% of the canvas tall, resting on the same feet baseline',
   'sleep-curl': 'whole dog lying down asleep, chin resting on its stretched-out front paws, eyes closed, without the tail',
   'belly-up': 'whole dog lying on its back with belly up, paws in the air and ears flopped down, without the tail',
   stretch: 'whole dog in a play bow, front legs stretched flat forward, chest low, rear raised, without the tail',
   groom: 'whole dog sitting and scratching behind its ear with a raised hind leg, eyes shut happily, without the tail',
   'sit-up': 'whole dog sitting up on hind legs begging, front paws held up, without the tail',
-  dangle: 'whole dog hanging limp as if lifted gently from above, body hanging, front paws dangling down, hind legs dangling, ears hanging down, no hand, no person, nothing holding it',
+  dangle: 'whole dog lifted off the ground and hanging VERTICALLY from the scruff of its neck: head at the top, body hanging straight down below it, front paws dangling down in front of the chest, hind legs dangling at the bottom, ears hanging, without the tail, no hand, no person, nothing holding it',
 };
 
 const SUBJECTS: { readonly [S in Species]: Record<string, string> } = { cat: CAT_SUBJECTS, dog: DOG_SUBJECTS };
@@ -180,8 +181,12 @@ async function main(): Promise<void> {
   let reference = arg('reference') ?? join(dir, 'reference.png');
   if (!arg('reference') && (!existsSync(reference) || only?.includes('reference'))) {
     console.log('generating reference');
-    const refPrompt = `pixel art, 96x96 grid, side view facing right, ${coatWords} ${species}, ${subjects.reference}, flat magenta #FF00FF background, no shadow, no text. Output one square image.`;
-    writeFileSync(reference, await generate(refPrompt, key));
+    const style = arg('style');
+    const styleNote = style
+      ? ' Match the attached pixel art exactly in style: same scale, same outline weight, same shading, same feet baseline and same canvas; it shows a different animal.'
+      : '';
+    const refPrompt = `pixel art, 96x96 grid, side view facing right, ${coatWords} ${species}, ${subjects.reference}, flat magenta #FF00FF background, no shadow, no text.${styleNote} Output one square image.`;
+    writeFileSync(reference, await generate(refPrompt, key, style));
     makeSquare(reference);
   }
   const names = (only ?? [...PARTS, ...POSES]).filter((n) => n !== 'reference');

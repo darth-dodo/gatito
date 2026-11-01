@@ -14,11 +14,11 @@ export const ORANGE_PALETTE: Rgb[] = [
 
 /** The golden dog's fur shades, darkest to lightest. */
 export const GOLDEN_PALETTE: Rgb[] = [
-  [150, 96, 36],
-  [204, 146, 66],
-  [226, 178, 98],
-  [240, 212, 150],
-  [250, 236, 200],
+  [144, 92, 7],
+  [183, 125, 8],
+  [215, 155, 20],
+  [244, 189, 43],
+  [246, 206, 79],
 ];
 
 /** Each species' full art set is drawn in this coat; the derived coats are recoloured from it. */
@@ -106,6 +106,9 @@ export async function recolour(png: Buffer, from: Colour, to: Colour): Promise<B
   const known: { colour: Rgb; replacement: Rgb }[] = [
     ...source.map((colour, i) => ({ colour, replacement: target[i] })),
     ...KEPT_COLOURS.map((colour) => ({ colour, replacement: colour })),
+    // Edge pixels blended with the magenta background become the key, so the build keys them out,
+    // instead of mapping them to a kept colour (they used to turn nose pink).
+    { colour: [255, 0, 255], replacement: [255, 0, 255] },
   ];
   const { data, info } = await sharp(png).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const cache = new Map<number, Rgb>();

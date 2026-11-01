@@ -1,6 +1,6 @@
 {
   "cell": 96,
-  "note": "Parts are drawn in place in the assembled standing dog. anchor is the pivot in 0..1 cell coordinates. offset is the pivot position in cell pixels relative to the body pivot. z is draw order, low first. poseTail places the tail base on each key pose (x, y in cell pixels from the body pivot), with its rest rotation and how much it moves. sitOverlay places the ears and eyes layered on the sit pose. headTop is just above the head on each look, where a napping pet's z's start.",
+  "note": "Parts are drawn in place in the assembled standing dog (cut from reference.png by scripts/art/cut-parts.ts); see cat.json for the fields. The tail art points left from its base, so on the floor its rest rotation is about 0 and clockwise lifts it.",
   "parts": {
     "body": {
       "anchor": [
@@ -15,206 +15,207 @@
     },
     "head": {
       "anchor": [
-        0.75,
-        0.3958
+        0.8333,
+        0.375
       ],
       "z": 5,
       "offset": [
-        28,
-        -18
+        36,
+        -20
       ]
     },
     "ear-near": {
       "anchor": [
-        0.7083,
-        0.2917
+        0.7708,
+        0.2083
       ],
       "z": 6,
       "offset": [
-        24,
-        -28
+        30,
+        -36
       ]
     },
     "ear-far": {
       "anchor": [
         0.7917,
-        0.2708
+        0.1875
       ],
       "z": 3,
       "offset": [
         32,
-        -30
+        -38
       ]
     },
     "eyes-open": {
       "anchor": [
-        0.8333,
-        0.375
+        0.875,
+        0.2708
       ],
       "z": 7,
       "offset": [
-        36,
-        -20
+        40,
+        -30
       ]
     },
     "eyes-closed": {
       "anchor": [
-        0.8333,
-        0.375
+        0.875,
+        0.2708
       ],
       "z": 7,
       "offset": [
-        36,
-        -20
+        40,
+        -30
       ]
     },
     "tail": {
       "anchor": [
-        0.1875,
-        0.5208
+        0.25,
+        0.5312
       ],
       "z": 0,
       "offset": [
-        -26,
-        -6
+        -20,
+        -5
       ]
     },
     "leg-front-near": {
       "anchor": [
-        0.6458,
-        0.6667
+        0.6771,
+        0.5625
       ],
       "z": 9,
       "offset": [
-        18,
-        8
+        21,
+        -2
       ]
     },
     "leg-front-far": {
       "anchor": [
-        0.7292,
-        0.6667
+        0.7917,
+        0.5625
       ],
       "z": 2,
       "offset": [
-        26,
-        8
+        32,
+        -2
       ]
     },
     "leg-back-near": {
       "anchor": [
         0.2812,
-        0.6667
+        0.5625
       ],
       "z": 8,
       "offset": [
         -17,
-        8
+        -2
       ]
     },
     "leg-back-far": {
       "anchor": [
-        0.375,
-        0.6667
+        0.4167,
+        0.5625
       ],
       "z": 1,
       "offset": [
-        -8,
-        8
+        -4,
+        -2
       ]
     },
     "paw-raised": {
       "anchor": [
         0.6458,
-        0.625
+        0.5417
       ],
       "z": 10,
       "offset": [
         18,
-        4
+        -4
       ]
     }
   },
   "poseTail": {
     "sit": {
       "x": -22,
-      "y": 24,
-      "rotation": -1.45,
+      "y": 23,
+      "rotation": 0.15,
       "swing": 1
     },
     "loaf": {
-      "x": -18,
-      "y": 4,
-      "rotation": -2.38,
+      "x": -20,
+      "y": 10,
+      "rotation": 3.0,
       "swing": 0.15
     },
     "sleep-curl": {
-      "x": -30,
-      "y": 16,
-      "rotation": -1.45,
+      "x": -32,
+      "y": 0,
+      "rotation": -0.3,
       "swing": 0.3
     },
     "belly-up": {
-      "x": -26,
-      "y": 12,
-      "rotation": -1.45,
+      "x": -32,
+      "y": 4,
+      "rotation": -0.4,
       "swing": 1
     },
     "stretch": {
-      "x": -28,
-      "y": -12,
-      "rotation": 0,
+      "x": -32,
+      "y": -32,
+      "rotation": 1.2,
       "swing": 1
     },
     "groom": {
-      "x": -24,
-      "y": 24,
-      "rotation": -1.45,
+      "x": -20,
+      "y": 20,
+      "rotation": 0.15,
       "swing": 0.6
     },
     "sit-up": {
-      "x": -22,
-      "y": 24,
-      "rotation": -1.45,
+      "x": -16,
+      "y": 26,
+      "rotation": 0.15,
       "swing": 1
     },
     "dangle": {
-      "x": -2,
-      "y": 22,
-      "rotation": 3,
+      "x": -10,
+      "y": 24,
+      "rotation": -1.5,
       "swing": 1.4
     }
   },
   "sitOverlay": {
     "ear-near": [
-      10,
-      -38
+      25,
+      -39
     ],
     "ear-far": [
-      18,
-      -40
+      27,
+      -41
     ],
     "eyes-open": [
-      22,
-      -30
+      33,
+      -35
     ],
     "eyes-closed": [
-      22,
-      -30
+      33,
+      -35
     ]
   },
   "headTop": {
     "puppet": {
-      "x": 28,
-      "y": -32
+      "x": 34,
+      "y": -40
     },
     "sit": {
-      "x": 14,
-      "y": -42
+      "x": 19,
+      "y": -44
     },
     "sleep-curl": {
-      "x": 28,
-      "y": 0
+      "x": 38,
+      "y": -18
     }
-  }
+  },
+  "earTurn": -1
 }
