@@ -6,7 +6,10 @@ use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder
 
 /// How often the cursor is polled for hit testing.
 const POLL_HZ: u64 = 60;
-/// How often the `cursor` event is emitted to the front end.
+/// How often the `cursor` event is emitted while the cursor is away from every pet.
+/// Over a pet (a held pet's hit box is padded, so a drag counts) it goes at `POLL_HZ`,
+/// because the front end reads petting strokes from these positions: macOS sends no
+/// mouse-moved events to the unfocused overlay.
 const CURSOR_EMIT_HZ: u64 = 20;
 
 /// A point in logical pixels, relative to the overlay window.
@@ -25,6 +28,12 @@ pub fn cursor_hits(boxes: &[Rect], p: Point) -> bool {
     boxes
         .iter()
         .any(|b| p.x >= b.x && p.x <= b.x + b.width && p.y >= b.y && p.y <= b.y + b.height)
+}
+
+/// True when poll tick `tick` should emit `cursor`: every tick while over a pet hit box,
+/// otherwise every `POLL_HZ / CURSOR_EMIT_HZ` ticks.
+pub fn should_emit_cursor(tick: u64, over_pet: bool) -> bool {
+    over_pet || tick.is_multiple_of((POLL_HZ / CURSOR_EMIT_HZ).max(1))
 }
 
 /// Convert a physical screen cursor position to logical window coordinates.
@@ -75,10 +84,9 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
 }
 
 /// Poll the cursor at `POLL_HZ`: toggle click-through only when the hit result
-/// changes, and emit `cursor` at `CURSOR_EMIT_HZ`.
+/// changes, and emit `cursor` at `POLL_HZ` over a pet, `CURSOR_EMIT_HZ` elsewhere.
 pub fn start_cursor_poll(app: AppHandle) {
     std::thread::spawn(move || {
-        let emit_every = (POLL_HZ / CURSOR_EMIT_HZ).max(1);
         let mut tick: u64 = 0;
         let mut ignoring = true;
         loop {
@@ -104,7 +112,7 @@ pub fn start_cursor_poll(app: AppHandle) {
             if ignoring == hit && window.set_ignore_cursor_events(!hit).is_ok() {
                 ignoring = !hit;
             }
-            if tick.is_multiple_of(emit_every) {
+            if should_emit_cursor(tick, hit) {
                 let _ = app.emit("cursor", point);
             }
             tick = tick.wrapping_add(1);
@@ -145,6 +153,19 @@ mod tests {
     fn cursor_hits_true_on_edges() {
         assert!(cursor_hits(&boxes(), Point { x: 100.0, y: 200.0 }));
         assert!(cursor_hits(&boxes(), Point { x: 164.0, y: 264.0 }));
+    }
+
+    #[test]
+    fn should_emit_cursor_every_tick_over_a_pet() {
+        assert!((0..10).all(|t| should_emit_cursor(t, true)));
+    }
+
+    #[test]
+    fn should_emit_cursor_at_the_slow_rate_elsewhere() {
+        let every = POLL_HZ / CURSOR_EMIT_HZ;
+        assert_eq!(every, 3);
+        let emitted: Vec<u64> = (0..10).filter(|&t| should_emit_cursor(t, false)).collect();
+        assert_eq!(emitted, vec![0, 3, 6, 9]);
     }
 
     #[test]

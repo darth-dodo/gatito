@@ -108,7 +108,8 @@
         inset: 0;
         pointer-events: none;
       }
-      #pets canvas { display: block; }
+      /* The page has nothing to click, so the canvas takes the pointer for petting and dragging. */
+      #pets canvas { display: block; pointer-events: auto; }
       @media (prefers-reduced-motion: reduce) {
         body { animation: none; }
       }

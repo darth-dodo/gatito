@@ -7,11 +7,12 @@ import { seededRng } from '../brain/rng';
 import { TUNING } from '../brain/tuning';
 import type { Pet } from '../brain/types';
 import { loadAtlas } from '../render/atlas';
-import { floatingZs } from '../render/effects';
+import { floatingZs, heartBurst, risingHearts } from '../render/effects';
 import { CAT_BOX, rigPose } from '../render/rig';
 import { PetStage } from '../render/stage';
 import { PetController } from '../sim/controller';
 import { World, type Body } from '../sim/world';
+import { HELD_HITBOX_PAD_PX, InputRouter, cursorEscapedHold } from './input';
 
 /** Hit boxes go to the host at most this often. */
 const HITBOX_MIN_INTERVAL_MS = 1000 / 30;
@@ -72,23 +73,74 @@ function dropBody(id: string, floor: Floor, x01: number): Body {
   return body;
 }
 
-/** Sends every pet's rect when any of them moved, throttled. */
-function hitboxPusher(host: PetHost): (bodies: readonly Body[], now: number) => void {
+/**
+ * Sends every pet's rect when any of them moved, throttled. A held pet's rect, padded, goes
+ * every frame so the drag keeps the mouse.
+ */
+function hitboxPusher(host: PetHost): (bodies: readonly Body[], now: number, heldId: string | null) => void {
   let lastKey = '';
   let lastAt = -Infinity;
-  return (bodies, now) => {
-    const rects: Rect[] = bodies.map((b) => ({
-      x: Math.round(b.x),
-      y: Math.round(b.y),
-      width: b.width,
-      height: b.height,
-    }));
+  return (bodies, now, heldId) => {
+    const rects: Rect[] = bodies.map((b) => {
+      const pad = b.id === heldId ? HELD_HITBOX_PAD_PX : 0;
+      return {
+        x: Math.round(b.x) - pad,
+        y: Math.round(b.y) - pad,
+        width: b.width + 2 * pad,
+        height: b.height + 2 * pad,
+      };
+    });
     const key = JSON.stringify(rects);
-    if (key === lastKey || now - lastAt < HITBOX_MIN_INTERVAL_MS) return;
+    if (key === lastKey || (heldId === null && now - lastAt < HITBOX_MIN_INTERVAL_MS)) return;
     lastKey = key;
     lastAt = now;
     void host.setHitboxes(rects);
   };
+}
+
+/**
+ * Feeds the canvas's button events to the router: press, drag, release and right click. Strokes
+ * never come from here; they come from the host cursor (see startPets). The overlay only gets
+ * pointer events while the cursor is over a pet hit box; a pet captures the pointer as it lifts
+ * so the drag survives fast moves.
+ */
+function listenPointer(canvas: HTMLCanvasElement, router: InputRouter): Unlisten {
+  const off = new AbortController();
+  const opts = { signal: off.signal };
+  canvas.style.touchAction = 'none';
+  canvas.addEventListener(
+    'pointermove',
+    (e) => {
+      // Capture as the pet lifts, so a fast drag keeps every move and the release.
+      if (router.pointerMove(e.clientX, e.clientY, e.buttons) === 'lifted') {
+        canvas.setPointerCapture(e.pointerId);
+      }
+    },
+    opts,
+  );
+  canvas.addEventListener(
+    'pointerdown',
+    (e) => {
+      if (e.button !== 0 && e.button !== 2) return;
+      router.pointerDown(e.clientX, e.clientY, e.button);
+    },
+    opts,
+  );
+  canvas.addEventListener(
+    'pointerup',
+    (e) => {
+      if (e.button === 0) router.pointerUp(e.clientX, e.clientY, performance.now() / 1000);
+      else router.release();
+    },
+    opts,
+  );
+  const release = (): void => router.release();
+  canvas.addEventListener('pointercancel', release, opts);
+  canvas.addEventListener('lostpointercapture', release, opts);
+  canvas.addEventListener('pointerleave', () => router.pointerLeave(), opts);
+  // The right button belongs to the cue ring, never the browser menu.
+  canvas.addEventListener('contextmenu', (e) => e.preventDefault(), opts);
+  return () => off.abort();
 }
 
 export interface RunningPets {
@@ -149,9 +201,22 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
     await live(pet, spawnBody(pet.id, floor, i, options.pets.length));
   }
 
+  /** When each pet was last tapped (performance.now() seconds), for its heart burst. */
+  const tappedAt = new Map<string, number>();
+  const router = new InputRouter({
+    pets,
+    world,
+    /** Task 13 opens the cue ring here. */
+    onCueRequest: () => undefined,
+    onTap: (id) => tappedAt.set(id, performance.now() / 1000),
+  });
+  const offPointer = listenPointer(app.canvas, router);
+
   const unlisten = await Promise.all([
+    // The one source of strokes: the webview never sees plain mouse moves in the real overlay.
     host.onCursor((p) => {
       cursor = p;
+      router.cursorMove(p.x, p.y, performance.now() / 1000);
     }),
     host.onFloorChanged((f) => {
       floor = f;
@@ -165,9 +230,14 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
     const active = activeSeconds(dt, { userIdleSeconds, napTime: false });
     const ctx = { cursor, userIdleSeconds, floor };
 
+    const heldId = router.heldId();
+    const held = heldId === null ? undefined : pets.find((p) => p.body.id === heldId);
+    if (held && cursorEscapedHold(held.body, cursor)) router.release();
+
     for (const p of pets) p.controller.update(dt, ctx);
     world.step(dt);
 
+    const nowSeconds = performance.now() / 1000;
     for (const { body: b, controller: c } of pets) {
       if (active > 0) {
         c.pet = updateLearned({
@@ -179,12 +249,15 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
       const { name, t } = c.anim();
       stage.draw(c.pet.id, b, rigPose(name, t, c.pet.mood));
       stage.drawZs(c.pet.id, name === 'nap' || name === 'cuddle-nap' ? floatingZs(t) : []);
+      const tapAge = nowSeconds - (tappedAt.get(c.pet.id) ?? -Infinity);
+      stage.drawHearts(c.pet.id, name === 'purr' ? risingHearts(t) : heartBurst(tapAge));
     }
-    pushHitboxes(world.bodies(), performance.now());
+    pushHitboxes(world.bodies(), performance.now(), router.heldId());
   });
 
   return {
     stop() {
+      offPointer();
       for (const off of unlisten) off();
       app.destroy({ removeView: true }, { children: true });
     },

@@ -54,6 +54,7 @@ export interface ControllerContext {
 export type ControllerAction =
   | { kind: 'trick'; trick: Trick }
   | { kind: 'purr' }
+  | { kind: 'belly-up' }
   | { kind: 'yawn' }
   | { kind: 'walk-away' };
 
@@ -113,7 +114,7 @@ export class PetController {
     this.body.vx = 0;
     if (action.kind === 'trick') {
       this.play(action.trick, { kind: 'timed', seconds: ANIM_SECONDS[action.trick] });
-    } else if (action.kind === 'purr' || action.kind === 'yawn') {
+    } else if (action.kind === 'purr' || action.kind === 'belly-up' || action.kind === 'yawn') {
       this.play(action.kind, { kind: 'timed', seconds: ANIM_SECONDS[action.kind] });
     } else {
       const c = this.lastCursor;
