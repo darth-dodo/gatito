@@ -10,6 +10,15 @@ const HEIGHT: f64 = 560.0;
 #[derive(Default)]
 pub struct CreateTarget(Mutex<Option<String>>);
 
+/// Native title of the window for this target.
+fn window_title(pet_id: Option<&str>) -> &'static str {
+    if pet_id.is_some() {
+        "Edit pet"
+    } else {
+        "New pet"
+    }
+}
+
 /// Store the new target and report whether it differs from the old one.
 fn retarget(slot: &Mutex<Option<String>>, pet_id: Option<String>) -> bool {
     let Ok(mut current) = slot.lock() else {
@@ -23,17 +32,19 @@ fn retarget(slot: &Mutex<Option<String>>, pet_id: Option<String>) -> bool {
 /// Open the New pet window, or bring it forward; with a pet id it edits that pet.
 #[tauri::command]
 pub async fn open_create_window(app: AppHandle, pet_id: Option<String>) -> Result<(), String> {
+    let title = window_title(pet_id.as_deref());
     let changed = retarget(&app.state::<CreateTarget>().0, pet_id);
     let window = match app.get_webview_window(LABEL) {
         Some(window) => {
             if changed {
+                window.set_title(title).map_err(|e| e.to_string())?;
                 app.emit_to(LABEL, "create-target", ())
                     .map_err(|e| e.to_string())?;
             }
             window
         }
         None => WebviewWindowBuilder::new(&app, LABEL, WebviewUrl::App("create.html".into()))
-            .title("New pet")
+            .title(title)
             .inner_size(WIDTH, HEIGHT)
             .resizable(false)
             .decorations(true)
@@ -55,6 +66,12 @@ pub fn create_window_pet(target: State<CreateTarget>) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn title_says_edit_only_with_a_pet() {
+        assert_eq!(window_title(None), "New pet");
+        assert_eq!(window_title(Some("a")), "Edit pet");
+    }
 
     #[test]
     fn retarget_reports_changes_only() {

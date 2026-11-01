@@ -130,7 +130,14 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
 
   const live = async (pet: Pet, body: Body): Promise<void> => {
     arriving.add(pet.id);
-    const atlas = await loadAtlas(pet.species, pet.colour);
+    let atlas: Awaited<ReturnType<typeof loadAtlas>>;
+    try {
+      atlas = await loadAtlas(pet.species, pet.colour);
+    } catch (e) {
+      // A failed load must not leave the id stuck, or the pet could never be added again.
+      arriving.delete(pet.id);
+      throw e;
+    }
     if (!arriving.delete(pet.id)) return;
     world.add(body);
     stage.add(pet, atlas);

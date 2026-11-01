@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { newPairings } from '../../src/brain/learning';
 import { serialise, type SaveFile } from '../../src/brain/save';
 import type { Pet } from '../../src/brain/types';
-import { Autosave, diffPets, interpretSave, SAVE_DELAY_MS } from '../../src/overlay/persistence';
+import { TUNING } from '../../src/brain/tuning';
+import { Autosave, interpretSave, planChange, SAVE_DELAY_MS } from '../../src/overlay/persistence';
 
 function pet(id: string, over: Partial<Pet> = {}): Pet {
   return {
@@ -42,25 +43,44 @@ describe('interpretSave', () => {
   });
 });
 
-describe('diffPets', () => {
-  it('finds added, removed and renamed or recoloured pets', () => {
-    const current = [pet('a'), pet('b'), pet('c')];
-    const incoming = [pet('a'), pet('c', { name: 'Cleo', colour: 'grey' }), pet('d')];
-    const d = diffPets(current, incoming);
-    expect(d.added.map((p) => p.id)).toEqual(['d']);
-    expect(d.removed).toEqual(['b']);
-    expect(d.updated.map((p) => p.id)).toEqual(['c']);
+describe('planChange', () => {
+  const payload = (pets: Pet[], kind: 'add' | 'edit' | 'rehome', id: string) => ({
+    save: save(pets),
+    change: { kind, id },
   });
 
-  it('ignores mood differences, which the overlay owns', () => {
-    const d = diffPets([pet('a')], [pet('a', { mood: { affection: 1, energy: 1 } })]);
-    expect(d).toEqual({ added: [], removed: [], updated: [] });
+  it('adds only the named new pet', () => {
+    const action = planChange([pet('a')], payload([pet('a'), pet('b')], 'add', 'b'));
+    expect(action).toEqual({ kind: 'add', pet: pet('b') });
+  });
+
+  it('an edit payload missing another pet does not remove it', () => {
+    const current = [pet('a'), pet('b'), pet('c')];
+    const action = planChange(current, payload([pet('a', { name: 'Ash' })], 'edit', 'a'));
+    expect(action).toEqual({ kind: 'edit', pet: pet('a', { name: 'Ash' }) });
+  });
+
+  it('rehomes only the named pet', () => {
+    const action = planChange([pet('a'), pet('b')], payload([], 'rehome', 'b'));
+    expect(action).toEqual({ kind: 'rehome', id: 'b' });
+  });
+
+  it('ignores changes that do not fit the running pets', () => {
+    expect(planChange([pet('a')], payload([pet('a')], 'add', 'a'))).toBeNull();
+    expect(planChange([pet('a')], payload([pet('b')], 'edit', 'b'))).toBeNull();
+    expect(planChange([pet('a')], payload([], 'rehome', 'z'))).toBeNull();
+    expect(planChange([pet('a')], payload([], 'add', 'b'))).toBeNull();
   });
 
   it('never adds beyond the pet limit', () => {
-    const current = ['1', '2', '3', '4', '5'].map((id) => pet(id));
-    const d = diffPets(current, [...current, pet('6'), pet('7')]);
-    expect(d.added.map((p) => p.id)).toEqual(['6']);
+    const six = ['1', '2', '3', '4', '5', '6'].map((id) => pet(id));
+    expect(planChange(six, payload([pet('7')], 'add', '7'))).toBeNull();
+  });
+
+  it('rejects malformed payloads', () => {
+    expect(planChange([pet('a')], null)).toBeNull();
+    expect(planChange([pet('a')], { save: save([]), change: { kind: 'eat', id: 'a' } })).toBeNull();
+    expect(planChange([pet('a')], { save: { version: 2 }, change: { kind: 'rehome', id: 'a' } })).toBeNull();
   });
 });
 
@@ -72,29 +92,84 @@ describe('Autosave', () => {
     vi.useRealTimers();
   });
 
-  it('writes a changed state within the delay, and nothing when unchanged', async () => {
-    let state = save([pet('a')]);
+  const drifted = (s: SaveFile): SaveFile => ({
+    ...s,
+    pets: s.pets.map((p) => ({ ...p, mood: { ...p.mood, affection: p.mood.affection + 1 } })),
+  });
+
+  it('writes nothing while nothing changes', async () => {
+    const state = save([pet('a')]);
     const write = vi.fn(() => Promise.resolve());
-    const auto = new Autosave(() => state, write, serialise(state));
+    const auto = new Autosave(() => state, write, state);
     auto.start();
-    await vi.advanceTimersByTimeAsync(SAVE_DELAY_MS * 3);
+    await vi.advanceTimersByTimeAsync(TUNING.moodSaveSeconds * 3000);
     expect(write).not.toHaveBeenCalled();
-
-    state = save([pet('a', { mood: { affection: 51, energy: 50 } })]);
-    await vi.advanceTimersByTimeAsync(SAVE_DELAY_MS);
-    expect(write).toHaveBeenCalledTimes(1);
-    expect(write).toHaveBeenLastCalledWith(serialise(state));
-
-    await vi.advanceTimersByTimeAsync(SAVE_DELAY_MS * 3);
-    expect(write).toHaveBeenCalledTimes(1);
     auto.stop();
   });
 
-  it('flush writes at once', async () => {
+  it('saves mood drift at most every moodSaveSeconds', async () => {
+    let state = save([pet('a')]);
     const write = vi.fn(() => Promise.resolve());
-    const auto = new Autosave(() => save([pet('b')]), write, null);
+    const auto = new Autosave(() => state, write, state);
+    auto.start();
+    const drift = setInterval(() => {
+      state = drifted(state);
+    }, 100);
+    await vi.advanceTimersByTimeAsync(TUNING.moodSaveSeconds * 1000 - SAVE_DELAY_MS);
+    expect(write).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(SAVE_DELAY_MS);
+    expect(write).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(TUNING.moodSaveSeconds * 1000 - SAVE_DELAY_MS);
+    expect(write).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(SAVE_DELAY_MS);
+    expect(write).toHaveBeenCalledTimes(2);
+    clearInterval(drift);
+    auto.stop();
+  });
+
+  it('writes an added pet, a rename or a settings change straight away', async () => {
+    const start = save([pet('a')]);
+    let state = start;
+    const write = vi.fn(() => Promise.resolve());
+    const auto = new Autosave(() => state, write, start);
+    auto.start();
+
+    state = save([pet('a'), pet('b')]);
+    await vi.advanceTimersByTimeAsync(SAVE_DELAY_MS);
+    expect(write).toHaveBeenCalledTimes(1);
+
+    state = save([pet('a', { name: 'Ash' }), pet('b')]);
+    await vi.advanceTimersByTimeAsync(SAVE_DELAY_MS);
+    expect(write).toHaveBeenCalledTimes(2);
+
+    state = save([pet('a', { name: 'Ash' }), pet('b')], true);
+    await vi.advanceTimersByTimeAsync(SAVE_DELAY_MS);
+    expect(write).toHaveBeenCalledTimes(3);
+    expect(write).toHaveBeenLastCalledWith(serialise(state));
+    auto.stop();
+  });
+
+  it('a rename after unsaved drift is written straight away, drift included', async () => {
+    let state = save([pet('a')]);
+    const write = vi.fn(() => Promise.resolve());
+    const auto = new Autosave(() => state, write, state);
+    auto.start();
+    state = drifted(state);
+    await vi.advanceTimersByTimeAsync(SAVE_DELAY_MS * 2);
+    expect(write).not.toHaveBeenCalled();
+    state = { ...state, pets: state.pets.map((p) => ({ ...p, name: 'Ash' })) };
+    await vi.advanceTimersByTimeAsync(SAVE_DELAY_MS);
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(write).toHaveBeenLastCalledWith(serialise(state));
+    auto.stop();
+  });
+
+  it('flush writes drift at once', async () => {
+    const start = save([pet('b')]);
+    const write = vi.fn(() => Promise.resolve());
+    const auto = new Autosave(() => drifted(start), write, start);
     await auto.flush();
-    expect(write).toHaveBeenCalledWith(serialise(save([pet('b')])));
+    expect(write).toHaveBeenCalledWith(serialise(drifted(start)));
   });
 
   it('retries after a failed write', async () => {

@@ -4,7 +4,7 @@ import { validateName } from '../brain/names';
 import type { SaveFile } from '../brain/save';
 import type { Colour, Mood, Personality, Pet, Style } from '../brain/types';
 import { ipc } from '../ipc';
-import { interpretSave } from '../overlay/persistence';
+import { interpretSave, type ChangeKind } from '../overlay/persistence';
 import { hasAtlas, loadAtlas } from '../render/atlas';
 import { CAT_BOX, rigPose } from '../render/rig';
 import { PetStage } from '../render/stage';
@@ -163,9 +163,13 @@ async function main(): Promise<void> {
     if (e.key === 'Escape' && !dialog.open) void win.close();
   });
 
-  const send = async (next: (latest: SaveFile) => SaveFile): Promise<void> => {
+  const send = async (
+    kind: ChangeKind,
+    id: string,
+    next: (latest: SaveFile) => SaveFile,
+  ): Promise<void> => {
     submit.disabled = true;
-    await ipc.emitPetsChanged(next(await currentSave()));
+    await ipc.emitPetsChanged({ save: next(await currentSave()), change: { kind, id } });
     await win.close();
   };
 
@@ -176,11 +180,14 @@ async function main(): Promise<void> {
     const checked = validateName(name.value);
     if (submit.disabled || !checked.ok) return;
     const f = fields();
-    void send((latest) =>
-      editing
-        ? withEdit(latest, editing.id, { name: checked.name, colour: f.colour, style: f.style })
-        : withNewPet(latest, newPet({ name: checked.name, ...f }, crypto.randomUUID())),
-    );
+    if (editing) {
+      void send('edit', editing.id, (latest) =>
+        withEdit(latest, editing.id, { name: checked.name, colour: f.colour, style: f.style }),
+      );
+    } else {
+      const pet = newPet({ name: checked.name, ...f }, crypto.randomUUID());
+      void send('add', pet.id, (latest) => withNewPet(latest, pet));
+    }
   });
 
   rehome.addEventListener('click', () => {
@@ -192,7 +199,7 @@ async function main(): Promise<void> {
   el('confirm-keep').addEventListener('click', () => dialog.close());
   el('confirm-go').addEventListener('click', () => {
     dialog.close();
-    if (editing) void send((latest) => withoutPet(latest, editing.id));
+    if (editing) void send('rehome', editing.id, (latest) => withoutPet(latest, editing.id));
   });
 
   await ipc.onCreateTarget(() => window.location.reload());

@@ -2,7 +2,7 @@ import { parseSave, serialise, type SaveFile } from '../brain/save';
 import { TUNING } from '../brain/tuning';
 import type { Pet } from '../brain/types';
 
-/** A changed state reaches disk within this long. */
+/** How often the autosave checks for changes; membership and name changes reach disk within this. */
 export const SAVE_DELAY_MS = 2000;
 
 export interface LoadResult {
@@ -25,50 +25,73 @@ export function interpretSave(text: string | null): LoadResult {
   return { save: parsed.save, quarantine: false, firstRun: parsed.save.pets.length === 0 };
 }
 
-export interface PetDiff {
-  added: Pet[];
-  removed: string[];
-  /** Incoming pets whose name, colour or style changed. */
-  updated: Pet[];
+export type ChangeKind = 'add' | 'edit' | 'rehome';
+const CHANGE_KINDS: readonly string[] = ['add', 'edit', 'rehome'];
+
+/** The `pets-changed` payload: the form's view of the save plus the one change it made. */
+export interface PetsChanged {
+  save: SaveFile;
+  change: { kind: ChangeKind; id: string };
+}
+
+/** The single change the overlay applies to its running pets. */
+export type ChangeAction = { kind: 'add'; pet: Pet } | { kind: 'edit'; pet: Pet } | { kind: 'rehome'; id: string };
+
+/**
+ * Turns a `pets-changed` payload into one change to the running pets, or null when it
+ * is malformed or does not fit them. Pets absent from the payload are never removed:
+ * only the named rehome removes a pet. Mood and learning stay with the overlay.
+ */
+export function planChange(current: readonly Pet[], payload: unknown): ChangeAction | null {
+  if (typeof payload !== 'object' || payload === null) return null;
+  const { save, change } = payload as { save?: unknown; change?: unknown };
+  if (typeof change !== 'object' || change === null) return null;
+  const { kind, id } = change as { kind?: unknown; id?: unknown };
+  if (typeof kind !== 'string' || !CHANGE_KINDS.includes(kind) || typeof id !== 'string') return null;
+  // The payload crosses a process boundary; check it like a file from disk.
+  const parsed = parseSave(JSON.stringify(save ?? null));
+  if (!parsed.ok) return null;
+  const running = current.some((p) => p.id === id);
+  if (kind === 'rehome') return running ? { kind, id } : null;
+  const pet = parsed.save.pets.find((p) => p.id === id);
+  if (!pet) return null;
+  if (kind === 'edit') return running ? { kind, pet } : null;
+  return !running && current.length < TUNING.maxCats ? { kind: 'add', pet } : null;
+}
+
+/** The save without mood and pairings, which drift on every active frame. */
+function structure(s: SaveFile): string {
+  return serialise({
+    ...s,
+    pets: s.pets.map((p) => ({ ...p, mood: { affection: 0, energy: 0 }, pairings: {} as Pet['pairings'] })),
+  });
 }
 
 /**
- * Compares the running pets with a `pets-changed` save from the New pet window.
- * Mood and learning are ignored: the overlay owns them.
+ * Checks every SAVE_DELAY_MS. Membership, name, colour, style, learned tricks and
+ * settings changes are written at once; mood and pairing drift at most every
+ * TUNING.moodSaveSeconds. `flush` writes any change immediately (quit, form changes).
  */
-export function diffPets(current: readonly Pet[], incoming: readonly Pet[]): PetDiff {
-  const byId = new Map(current.map((p) => [p.id, p]));
-  const incomingIds = new Set(incoming.map((p) => p.id));
-  const removed = current.filter((p) => !incomingIds.has(p.id)).map((p) => p.id);
-  const updated: Pet[] = [];
-  const added: Pet[] = [];
-  let count = current.length - removed.length;
-  for (const p of incoming) {
-    const old = byId.get(p.id);
-    if (old) {
-      if (old.name !== p.name || old.colour !== p.colour || old.style !== p.style) updated.push(p);
-    } else if (count < TUNING.maxCats) {
-      added.push(p);
-      count += 1;
-    }
-  }
-  return { added, removed, updated };
-}
-
-/** Writes the save when it changed, at most every SAVE_DELAY_MS, and at once on flush. */
 export class Autosave {
   private timer: ReturnType<typeof setInterval> | null = null;
   private writing: Promise<void> = Promise.resolve();
+  private lastText: string | null;
+  private lastStructure: string | null;
+  private lastWriteAt = Date.now();
 
   constructor(
     private readonly snapshot: () => SaveFile,
     private readonly write: (text: string) => Promise<void>,
-    /** The text already on disk, so an unchanged state is not rewritten. */
-    private lastWritten: string | null,
-  ) {}
+    /** The save already on disk, so an unchanged state is not rewritten. */
+    onDisk: SaveFile | null,
+  ) {
+    this.lastText = onDisk ? serialise(onDisk) : null;
+    this.lastStructure = onDisk ? structure(onDisk) : null;
+  }
 
   start(): void {
-    this.timer ??= setInterval(() => void this.flush(), SAVE_DELAY_MS);
+    this.lastWriteAt = Date.now();
+    this.timer ??= setInterval(() => void this.save(false), SAVE_DELAY_MS);
   }
 
   stop(): void {
@@ -76,14 +99,24 @@ export class Autosave {
     this.timer = null;
   }
 
-  /** Writes now if the state changed; writes never overlap. */
+  /** Writes now if anything changed; writes never overlap. */
   flush(): Promise<void> {
+    return this.save(true);
+  }
+
+  private save(force: boolean): Promise<void> {
     this.writing = this.writing.then(async () => {
-      const text = serialise(this.snapshot());
-      if (text === this.lastWritten) return;
+      const state = this.snapshot();
+      const text = serialise(state);
+      if (text === this.lastText) return;
+      const shape = structure(state);
+      const driftDue = Date.now() - this.lastWriteAt >= TUNING.moodSaveSeconds * 1000;
+      if (!force && shape === this.lastStructure && !driftDue) return;
       try {
         await this.write(text);
-        this.lastWritten = text;
+        this.lastText = text;
+        this.lastStructure = shape;
+        this.lastWriteAt = Date.now();
       } catch (e) {
         console.error('Could not save pets', e);
       }

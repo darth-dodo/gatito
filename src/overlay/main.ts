@@ -1,7 +1,6 @@
 import { ipc } from '../ipc';
-import { parseSave } from '../brain/save';
 import { startPets, type PetHost } from './app';
-import { Autosave, diffPets, interpretSave } from './persistence';
+import { Autosave, interpretSave, planChange } from './persistence';
 
 /** The Tauri overlay: floor, cursor and hit boxes come from Rust. */
 const tauriHost: PetHost = {
@@ -26,20 +25,21 @@ async function main(): Promise<void> {
   const autosave = new Autosave(
     () => ({ version: 1, pets: running.pets(), settings }),
     (t) => ipc.writeSave(t),
-    loaded.quarantine ? null : text,
+    loaded.quarantine || text === null ? null : loaded.save,
   );
   autosave.start();
 
-  await ipc.onPetsChanged((incoming) => {
-    // The payload crosses a process boundary; check it like a file from disk.
-    const parsed = parseSave(JSON.stringify(incoming));
-    if (!parsed.ok) return;
-    const diff = diffPets(running.pets(), parsed.save.pets);
-    for (const id of diff.removed) running.removePet(id);
-    void Promise.all([
-      ...diff.updated.map((p) => running.updatePet(p)),
-      ...diff.added.map((p) => running.addPet(p)),
-    ]).then(() => autosave.flush());
+  await ipc.onPetsChanged((payload) => {
+    // Apply only the one change the form made; never remove a pet for being absent.
+    const action = planChange(running.pets(), payload);
+    if (!action) return;
+    let applied: Promise<void> = Promise.resolve();
+    if (action.kind === 'rehome') running.removePet(action.id);
+    else if (action.kind === 'edit') applied = running.updatePet(action.pet);
+    else applied = running.addPet(action.pet);
+    void applied
+      .catch((e: unknown) => console.error('Could not apply the pet change', e))
+      .finally(() => autosave.flush());
   });
 
   await ipc.onQuitRequested(() => {

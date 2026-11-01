@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
-import type { SaveFile } from "./brain/save";
+import type { PetsChanged } from "./overlay/persistence";
 
 /** Usable screen area in logical pixels, relative to the overlay window. */
 export interface Floor {
@@ -63,12 +63,13 @@ export const ipc = {
   onCreateTarget(cb: () => void): Promise<UnlistenFn> {
     return listen("create-target", () => cb());
   },
-  /** The full save after creating, editing or rehoming a pet. */
-  emitPetsChanged(save: SaveFile): Promise<void> {
-    return emit("pets-changed", save);
+  /** The one pet created, edited or rehomed, with the form's view of the save. */
+  emitPetsChanged(payload: PetsChanged): Promise<void> {
+    return emit("pets-changed", payload);
   },
-  onPetsChanged(cb: (save: SaveFile) => void): Promise<UnlistenFn> {
-    return listen<SaveFile>("pets-changed", (event) => cb(event.payload));
+  /** The payload is untrusted until `planChange` checks it. */
+  onPetsChanged(cb: (payload: unknown) => void): Promise<UnlistenFn> {
+    return listen<unknown>("pets-changed", (event) => cb(event.payload));
   },
   onCursor(cb: (p: Point) => void): Promise<UnlistenFn> {
     return listen<Point>("cursor", (event) => cb(event.payload));

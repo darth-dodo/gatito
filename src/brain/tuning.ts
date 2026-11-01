@@ -30,6 +30,8 @@ export const TUNING = {
   walkAwayChance: 0.5,
   maxCats: 6,
   maxNameLength: 20,
+  /** Mood and learning drift reaches the save at most this often; other changes save at once. */
+  moodSaveSeconds: 60,
   gravityPxPerS2: 2400,
   simStepSeconds: 1 / 60,
   /** Whole-number screen scale for the 48 px pixel art. */
