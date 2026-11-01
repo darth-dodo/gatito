@@ -48,6 +48,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Petting works in the real app: strokes are read from the system cursor because macOS does not send mouse moves to the unfocused overlay.
 - Safer boot and quiet pets during Nap time: quitting always saves even if a boot step fails, background errors are logged instead of unhandled, and pets that are curling up or fading cannot be tapped, stroked or dragged ([#24](https://github.com/darth-dodo/windowsill/pull/24)).
 - Cats have noses again: the generated nose is only a few pixels at sprite size, so the 16 colour limit merged it into the fur. The art build now keeps it, in the one nose colour every coat shares ([#27](https://github.com/darth-dodo/windowsill/pull/27)).
-- Install notes cover macOS 15 and newer, where unsigned apps open from **Open Anyway** in System Settings > Privacy & Security instead of right-click > Open; the bundle is now ad-hoc signed so a downloaded copy on Apple Silicon is not reported as damaged, with an `xattr` fallback in the README.
+- Install notes cover macOS 15 and newer, where unsigned apps open from **Open Anyway** in System Settings > Privacy & Security instead of right-click > Open; the bundle is now ad-hoc signed so a downloaded copy on Apple Silicon is not reported as damaged, with an `xattr` fallback in the README ([#29](https://github.com/darth-dodo/windowsill/pull/29)).
 
 [Unreleased]: https://github.com/darth-dodo/windowsill/commits/main
