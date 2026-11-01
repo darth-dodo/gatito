@@ -1,6 +1,6 @@
 import type { Floor, Point } from '../ipc';
 import { newPairings } from '../brain/learning';
-import type { Colour, Mood, Personality, Pet } from '../brain/types';
+import type { Colour, Mood, Personality, Pet, Species } from '../brain/types';
 import { startPets, type PetHost } from '../overlay/app';
 import { parseDemoParams } from './params';
 
@@ -18,10 +18,10 @@ function floor(): Floor {
   };
 }
 
-function cat(name: string, colour: Colour, personality: Personality, mood: Mood): Pet {
+function pet(species: Species, name: string, colour: Colour, personality: Personality, mood: Mood): Pet {
   return {
     id: name.toLowerCase(),
-    species: 'cat',
+    species,
     name,
     style: 'pixel',
     colour,
@@ -68,10 +68,12 @@ if (!container) throw new Error('demo.html is missing #pets');
 
 void startPets(browserHost(), {
   pets: [
-    cat('Mochi', 'orange-tabby', 'cosy', { affection: 70, energy: 55 }),
-    cat('Pixel', 'black', 'mischievous', { affection: 40, energy: 85 }),
-    cat('Snow', 'white', 'curious', { affection: 60, energy: 75 }),
-    cat('Ash', 'grey', 'social', { affection: 80, energy: 65 }),
+    pet('cat', 'Mochi', 'orange-tabby', 'cosy', { affection: 70, energy: 55 }),
+    pet('dog', 'Biscuit', 'golden', 'social', { affection: 85, energy: 70 }),
+    pet('cat', 'Pixel', 'black', 'mischievous', { affection: 40, energy: 85 }),
+    pet('cat', 'Snow', 'white', 'curious', { affection: 60, energy: 75 }),
+    pet('dog', 'Cocoa', 'brown', 'curious', { affection: 55, energy: 80 }),
+    pet('cat', 'Ash', 'grey', 'social', { affection: 80, energy: 65 }),
   ],
   seed,
   timeScale: speed,

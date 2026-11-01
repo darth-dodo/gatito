@@ -30,9 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Menu bar menu: New pet, per-pet Edit, Call over and Rehome, Nap time (remembered) and Launch at login; mood only changes while you are at the computer ([#22](https://github.com/darth-dodo/windowsill/pull/22)).
 - macOS release checklist, .dmg bundle settings and install notes ([#25](https://github.com/darth-dodo/windowsill/pull/25)).
 - App icon: an orange tabby peeking over the windowsill, masked to the macOS icon grid. `npm run art:icon` rebuilds every bundle size from `art/source/app-icon/source.png` ([#26](https://github.com/darth-dodo/windowsill/pull/26)).
+- Dogs: pick Dog in New pet (only the chosen species' coats are offered, and the preview shows the dog). A second species that shares every cat system (mood, petting, pick up and drop, tricks, memory) with its own look and reactions. Dogs **Wag** instead of purring, take a **Curl nap** with the nose under the tail instead of loafing, **Scratch** an ear instead of grooming, thump their tail in a sit, and wag faster the happier they are. Seven dog coats (golden, black, white, brown, spotted, tricolour, husky grey). A generated golden retriever made like the tabby (reference drawn in the cat's style with `--style`, parts cut from it, 8 poses and a 6-frame walk cycle), recoloured to black, white and brown; floppy ears swing back when cross (`earTurn` in the rig); the save file accepts dogs in dog coats; the art pipeline recolours golden into black, white and brown; `npm run art:generate -- --species dog` prompts for dog poses; the browser demo and the README demo video and GIF show two dogs. The pet limit note now reads "6 pets is the limit".
 
 ### Changed
 
+- Per-pose tail placement and the ears and eyes layered on the sit pose moved from `rig.ts` into `art/rig/<species>.json`, so each species tunes its own puppet; cats look exactly as before.
 - Pet art uses a 96 by 96 grid shown at 1x instead of 48 by 48 at 2x, so generated art keeps its detail at the same size on screen; the `sit` pose is drawn without ears and eyes, which are layered on ([#14](https://github.com/darth-dodo/windowsill/pull/14)).
 - CI runs the app build in parallel and as a fast debug compile on pull requests; the full release bundle runs on main.
 - Walking cats use a generated six-frame walk cycle by default (coats without one fall back to the puppet walk), and the puppet parts are cut from the single reference cat with `npm run art:cut`, so parts line up with no seams ([#21](https://github.com/darth-dodo/windowsill/pull/21)).
@@ -40,8 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Recoloured coats no longer get a pink fringe: edge pixels blended with the magenta background are keyed out instead of being mapped to the nose colour (black, white and grey cats too).
+
 - Puppet seams and the light magenta halo around the cat outline; the sleeping "z" now starts above the head, and pose cross-fades no longer turn the cat see-through halfway ([#21](https://github.com/darth-dodo/windowsill/pull/21)).
 - Petting works in the real app: strokes are read from the system cursor because macOS does not send mouse moves to the unfocused overlay.
 - Safer boot and quiet pets during Nap time: quitting always saves even if a boot step fails, background errors are logged instead of unhandled, and pets that are curling up or fading cannot be tapped, stroked or dragged ([#24](https://github.com/darth-dodo/windowsill/pull/24)).
+- Cats have noses again: the generated nose is only a few pixels at sprite size, so the 16 colour limit merged it into the fur. The art build now keeps it, in the one nose colour every coat shares ([#27](https://github.com/darth-dodo/windowsill/pull/27)).
 
 [Unreleased]: https://github.com/darth-dodo/windowsill/commits/main

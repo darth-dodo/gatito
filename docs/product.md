@@ -125,6 +125,10 @@ Where a dog differs, it differs only in how it looks and reacts:
 
 Dogs make no sounds, like cats in Phase 1.
 
+**Dog moods in the tail.** A dog's tail follows mood the dog way: a happy dog wags faster and thumps more often, a cross one carries it low and slow (a cross cat flicks its tail fast instead). *(Claude's call.)*
+
+**Dog art.** Dogs use the same 12 parts and 8 key poses (see [Art](#art)); a few poses show the dog version: `loaf` is the **Curl nap** ring with the tail layered over the nose, `groom` is the **Scratch**, `sleep-curl` is lying down with the chin on the front paws, and `stretch` is a play bow. A dog does **Chase tail** by spinning its `loaf` ring. **Wag** and the tail thump are made in code on the `sit` pose.
+
 ---
 
 ## Living on the Desktop
@@ -339,7 +343,7 @@ The owner makes the art with GenAI image tools, in **pixel art**. Pets are **cut
 
 **Spin** and **Roll over** are made in code by flipping and rotating the puppet and poses.
 
-**Coats.** The owner generates the full set once in **orange tabby**. The pipeline recolours it to **black**, **white** and **grey** by palette mapping. **Tuxedo**, **calico** and **Siamese** have patterns, so each is generated as its own full set. A coat only appears in **New pet** once its set exists.
+**Coats.** The owner generates the full cat set once in **orange tabby**. The pipeline recolours it to **black**, **white** and **grey** by palette mapping. **Tuxedo**, **calico** and **Siamese** have patterns, so each is generated as its own full set. Dogs work the same way from **golden**: the pipeline recolours it to **black**, **white** and **brown**, and **spotted**, **tricolour** and **husky grey** are their own sets. A coat only appears in **New pet** once its set exists.
 
 **Consistency tip.** Generate one full-body reference cat first, then pass it as the reference image for every part and pose, with the same prompt stem: *"pixel art, 96x96 grid, side view facing right, orange tabby cat, <part>, flat magenta #FF00FF background, no shadow, no text"*.
 

@@ -2,7 +2,7 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Application } from 'pixi.js';
 import { validateName } from '../brain/names';
 import type { SaveFile } from '../brain/save';
-import type { Colour, Mood, Personality, Pet, Style } from '../brain/types';
+import type { Colour, Mood, Personality, Pet, Species, Style } from '../brain/types';
 import { ipc } from '../ipc';
 import { interpretSave, type ChangeKind } from '../overlay/persistence';
 import { hasAtlas, loadAtlas } from '../render/atlas';
@@ -14,6 +14,7 @@ import {
   formState,
   newPet,
   PERSONALITY_OPTIONS,
+  pickColour,
   SPECIES_OPTIONS,
   STYLE_OPTIONS,
   withEdit,
@@ -49,7 +50,7 @@ async function currentSave(): Promise<SaveFile> {
   return interpretSave(await ipc.loadSave()).save;
 }
 
-/** A small stage that shows the chosen coat sitting, at the same scale as on the desktop. */
+/** A small stage that shows the chosen species and coat sitting, at the same scale as on the desktop. */
 async function startPreview(container: HTMLElement, mood: Mood): Promise<(pet: Pet) => Promise<void>> {
   const app = new Application();
   await app.init({
@@ -78,16 +79,21 @@ async function startPreview(container: HTMLElement, mood: Mood): Promise<(pet: P
     height,
   };
   let t = 0;
+  let species: Species = 'cat';
   app.ticker.add((ticker) => {
     t += ticker.deltaMS / 1000;
-    stage.draw(PREVIEW_ID, body, rigPose('idle-sit', t, mood));
+    stage.draw(PREVIEW_ID, body, rigPose('idle-sit', t, mood, { species }));
   });
-  let shown: Colour | null = null;
+  // Black and white are coats of both species, so the preview is keyed on both.
+  let shown: string | null = null;
   return async (pet) => {
-    if (pet.colour === shown) return;
-    shown = pet.colour;
+    const look = `${pet.species}-${pet.colour}`;
+    if (look === shown) return;
+    shown = look;
     const atlas = await loadAtlas(pet.species, pet.colour);
-    if (shown === pet.colour) stage.add({ ...pet, id: PREVIEW_ID }, atlas);
+    if (shown !== look) return;
+    stage.add({ ...pet, id: PREVIEW_ID }, atlas);
+    species = pet.species;
   };
 }
 
@@ -109,11 +115,17 @@ async function main(): Promise<void> {
   const rehome = el<HTMLButtonElement>('rehome');
   const dialog = el<HTMLDialogElement>('confirm-rehome');
 
-  const colours = colourOptions((c) => hasAtlas('cat', c));
   fill(species, SPECIES_OPTIONS);
   fill(style, STYLE_OPTIONS);
-  fill(colour, colours);
   fill(personality, PERSONALITY_OPTIONS);
+  /** Offers the chosen species' coats, keeping the current coat when that species has it too. */
+  const fillColours = (): void => {
+    const s = species.value as Species;
+    const options = colourOptions(s, (c) => hasAtlas(s, c));
+    const keep = pickColour(options, colour.value === '' ? null : (colour.value as Colour));
+    fill(colour, options);
+    if (keep) colour.value = keep;
+  };
 
   if (editing) {
     const title = `Edit ${editing.name}`;
@@ -122,12 +134,13 @@ async function main(): Promise<void> {
     submit.textContent = 'Save';
     rehome.hidden = false;
     species.value = editing.species;
+    fillColours();
     name.value = editing.name;
     style.value = editing.style;
     colour.value = editing.colour;
     personality.value = editing.personality;
   } else {
-    colour.value = colours.find((o) => o.enabled)?.value ?? 'orange-tabby';
+    fillColours();
   }
 
   let touched = false;
@@ -141,7 +154,8 @@ async function main(): Promise<void> {
     name.setAttribute('aria-invalid', String(touched && s.nameError !== null));
   };
 
-  const fields = (): { colour: Colour; style: Style; personality: Personality } => ({
+  const fields = (): { species: Species; colour: Colour; style: Style; personality: Personality } => ({
+    species: species.value as Species,
     colour: colour.value as Colour,
     style: style.value as Style,
     personality: personality.value as Personality,
@@ -155,6 +169,10 @@ async function main(): Promise<void> {
   name.addEventListener('input', () => {
     touched = true;
     render();
+  });
+  species.addEventListener('change', () => {
+    fillColours();
+    refreshPreview();
   });
   colour.addEventListener('change', refreshPreview);
   style.addEventListener('change', refreshPreview);

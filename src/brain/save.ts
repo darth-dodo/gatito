@@ -1,5 +1,5 @@
 import { TUNING } from './tuning';
-import { COLOURS, CUES, PERSONALITIES, STYLES, TRICKS } from './types';
+import { COATS, CUES, PERSONALITIES, SPECIES, STYLES, TRICKS } from './types';
 import type { Cue, Pairings, Pet, Trick } from './types';
 
 export interface SaveFile {
@@ -79,14 +79,14 @@ function learned(v: unknown, what = 'learned'): Pet['learned'] {
 
 function pet(v: unknown): Pet {
   const o = obj(v, 'pet');
-  if (o.species !== 'cat') fail('unknown species (only cat is supported)');
+  const species = oneOf(o.species, SPECIES, 'species');
   const mood = obj(o.mood, 'mood');
   const out: Pet = {
     id: str(o.id, 'id'),
-    species: 'cat',
+    species,
     name: str(o.name, 'name'),
     style: oneOf(o.style, STYLES, 'style'),
-    colour: oneOf(o.colour, COLOURS, 'colour'),
+    colour: oneOf(o.colour, COATS[species], `colour for a ${species}`),
     personality: oneOf(o.personality, PERSONALITIES, 'personality'),
     mood: { affection: meter(mood.affection, 'affection'), energy: meter(mood.energy, 'energy') },
     pairings: pairings(o.pairings),
