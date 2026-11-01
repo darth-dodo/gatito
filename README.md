@@ -12,43 +12,59 @@
 
 ![Windowsill: pixel cats and a dog on a Mac desktop, one cat perched on a code window, one napping above the Dock, one being petted, and a golden dog wagging](docs/assets/windowsill-hero.svg)
 
-![Recorded demo: four pixel cats (orange tabby, black, white and grey) and two dogs (a golden and a brown retriever) sitting, play bowing, wandering and napping on the floor above a pretend Dock while the cursor drifts past them; the dogs nap lying down with their chin on their paws](docs/assets/demo.gif)
+![Recorded demo: three pixel cats (orange tabby, black and grey) and three dogs (golden, white and brown retrievers) side by side on the floor above a pretend Dock, sitting, walking past each other and napping, the cats curled up and the dogs lying with their chin on their paws, while the cursor drifts past them](docs/assets/demo.gif)
 
 Full-quality video: [docs/assets/demo.mp4](docs/assets/demo.mp4). Run the demo locally: `npm run dev` then open `/demo.html`.
 
 ---
 
-## A cat on your screen
+## A pet on your screen
 
-Desktop pets used to be a small joy: a creature that shared your screen and made a long day feel less lonely. Windowsill brings that back with cats that feel alive.
+Desktop pets used to be a small joy: a creature that shared your screen and made a long day feel less lonely. Windowsill brings that back with cats and dogs that feel alive.
 
-Each **pet** has a name, a look, a personality and a mood. It naps above your Dock, wanders, grooms a paw and gets into mild trouble when you forget about it. You stroke it with the cursor and it purrs. You teach it tricks, and it actually learns them, one reward at a time.
+Each **pet** has a name, a look, a personality and a mood. It naps above your Dock, wanders, grooms a paw (or scratches an ear) and gets into mild trouble when you forget about it. You stroke it with the cursor and a cat purrs while a dog wags. You teach it tricks, and it actually learns them, one reward at a time.
 
 **A desktop pet should make work feel warmer without ever getting in the way of it.** Clicks pass straight through to your apps everywhere except on a pet.
 
 ## What it feels like
 
 ### 🐾 Make a pet
-Pick a **species** (cat or dog), a **name**, a **style** (pixel first; soft and cute, ink doodle and silhouette later), a **coat** (cats: orange tabby, black, white, grey, tuxedo, calico, Siamese; dogs: golden, black, white, brown, spotted, tricolour, husky grey) and a **personality**: Cosy, Curious, Mischievous or Social. It drops in from the top of the screen and lands on its feet.
+Choose **New pet…** from the menu bar and pick a **species** (cat or dog), a **name**, a **style** (pixel for now; soft and cute, ink doodle and silhouette later), a **coat** and a **personality**: Cosy, Curious, Mischievous or Social. A live preview shows your pet as you choose. It drops in from the top of the screen and lands on its feet. Up to 6 pets, cats and dogs together.
+
+| Species | Coats you can pick today | Coming later |
+|---------|--------------------------|--------------|
+| Cat | orange tabby, black, white, grey | tuxedo, calico, Siamese |
+| Dog | golden, black, white, brown | spotted, tricolour, husky grey |
 
 ### 💤 It lives alongside you
-Mostly calm: napping, loafing, stretching awake, wandering a little. Curious cats explore, cosy ones curl up near your cursor when you step away.
+Mostly calm: napping, loafing, stretching awake, wandering a little. Curious pets explore, cosy ones curl up near your cursor when you step away. **Nap time** in the menu bar sends everyone to sleep until you wake them.
 
 ### 💕 Pet it
-Stroke a cat back and forth with the cursor, no click needed. It purrs, little hearts rise, and a happy cat rolls onto its back. Pick one up by the scruff and drop it; it always lands on its feet.
+Stroke a pet back and forth with the cursor, no click needed, or tap it a few times. A cat purrs; a dog wags its whole back end. Little hearts rise, and a happy pet rolls onto its back. Pick one up by the scruff and drop it; it always lands on its feet.
+
+### 🐕 Cats and dogs
+A dog is the same pet with a different body: it learns, sulks and naps on the same rules as a cat. Where it differs, it differs the dog way:
+
+| Cat | Dog |
+|-----|-----|
+| Purrs, eyes closed | **Wags**, tail high and back end wiggling |
+| Loafs, paws tucked in | **Curl nap**, nose tucked into a tight ring |
+| Grooms a paw | **Scratches** behind an ear with a hind leg |
+| Flicks its tail in a sit, faster when cross | **Thumps** its tail on the floor, more often when happy |
+| Ears fold back when cross | Floppy ears swing back when cross |
 
 ### 🎵 Teach it tricks
-Right-click a cat for the cue ring: whistle, clap, toy wand or treat bag. The cat guesses a trick (spin, sit up, roll over, high five, chase tail). Pet it if it got it right. After a few rounds the whistle really means spin, and every cat learns its own pairings. Forget to practise and the trick slowly fades.
+Right-click a pet for the cue ring: whistle, clap, toy wand or treat bag. The pet guesses a trick (spin, sit up, roll over, high five, chase tail). Pet it if it got it right. After a few rounds the whistle really means spin, and every pet learns its own pairings. Forget to practise and the trick slowly fades.
 
 ### 😼 Mood matters
-Ignore the cats while you work and they get naughty: zoomies, staring at your cursor, cheeky wrong tricks. A few strokes bring them back. Only time you're actually at the computer counts, so they don't wake up grumpy every morning.
+Ignore your pets while you work and they get naughty: zoomies, staring at your cursor, cheeky wrong tricks. A few strokes bring them back. Only time you're actually at the computer counts, so they don't wake up grumpy every morning.
 
 ### ✨ Optional Gemma
-If you run [Ollama](https://ollama.com) with a Gemma model, cats get in-character thought bubbles ("sun spot. mine."), and later you'll be able to talk to them, get name ideas and read their daily diary. Without it, everything else works the same.
+If you run [Ollama](https://ollama.com) with a Gemma model, pets will get in-character thought bubbles ("sun spot. mine."), and later you'll be able to talk to them, get name ideas and read their daily diary. Without it, everything else works the same.
 
 ## Privacy
 
-No accounts, no telemetry, no analytics. Nothing leaves your computer except, if you turn Gemma on, calls to Ollama on your own machine. Cats never look at your screen, your windows' contents or your typing.
+No accounts, no telemetry, no analytics. Nothing leaves your computer except, if you turn Gemma on, calls to Ollama on your own machine. Pets never look at your screen, your windows' contents or your typing.
 
 ## Install
 
@@ -68,30 +84,51 @@ There is no Dock icon; Windowsill lives in the menu bar.
 ## Using it
 
 - **Menu bar icon**: New pet, per-pet Edit, Call over and Rehome, **Nap time** (pets rest and moods stop changing, handy in meetings) and Launch at login.
-- **Petting**: move the cursor back and forth over a pet, no click needed. It purrs and hearts rise. Tapping also pets it.
+- **Petting**: move the cursor back and forth over a pet, no click needed. A cat purrs, a dog wags, and hearts rise. Tapping also pets it.
 - **Drag**: pick a pet up by the scruff and drop it anywhere; it lands on its feet.
 - **Tricks**: right-click a pet for the cue ring, pick a cue, then pet it if it guessed right. A few rounds in, the cue means the trick.
 - Clicks pass straight through to your apps everywhere except on a pet.
 
-### Adding your own art
+## Run from source
 
-Drop GenAI pixel art into `art/source/<species>/<coat>/` (12 parts and 8 key poses, exact file names matter), then run `npm run art` to rebuild the sprite sheets. The [adding-pet-art skill](.claude/skills/adding-pet-art/SKILL.md) has the file list, sizes and troubleshooting. Before a release, work through the [macOS release checklist](docs/release-checklist.md).
+You need macOS, Node.js with npm, and Rust (the toolchain is pinned in `rust-toolchain.toml`).
+
+```sh
+npm install
+npm run tauri dev     # the real app: pets on your desktop, New pet in the menu bar
+npm run dev           # or just the browser demo, at /demo.html
+npm run check         # every CI gate: typecheck, tests with coverage, cargo fmt, clippy and tests
+```
+
+Your pets are saved to one JSON file in the app's data folder, so they come back after a restart.
+
+## Art
+
+The pets are GenAI pixel art on a 96 by 96 grid. Each species has one full-body **reference** image; its cut-out parts (ears, eyes, tail, legs) are cut from that reference so they fit together seamlessly, and code animates them. A few whole-body key poses (sit, naps, belly up, stretch, groom, sit up, dangle) and a six-frame walk cycle cover shapes that parts cannot make.
+
+| Step | Command |
+|------|---------|
+| Generate images (needs `OPENROUTER_API_KEY`) | `npm run art:generate -- --species dog --coat golden` |
+| Cut the parts out of the reference | `npm run art:cut -- --species dog --coat golden` |
+| Build the sprite sheets | `npm run art` |
+
+One coat per species is generated in full (orange tabby, golden) and the plain coats are recoloured from it. The dog's reference was drawn with `--style` pointing at the cat's, so the two share a scale, outline and baseline. To add your own art, drop it into `art/source/<species>/<coat>/` (12 parts and 8 key poses, exact file names matter) and run `npm run art`. The [adding-pet-art skill](.claude/skills/adding-pet-art/SKILL.md) has the file list, sizes and troubleshooting. Before a release, work through the [macOS release checklist](docs/release-checklist.md).
 
 ## Status
 
-**Phase 1 is complete.** Pixel cats, click-through, petting, tricks, mood, saved pets, the menu bar menu and the macOS build are in. Phase 2 (dogs and more) is next.
+**Phase 1 is complete, and dogs are in from Phase 2.** Pixel cats and dogs, click-through, petting, tricks, mood, saved pets, the menu bar menu and the macOS build are in. The rest of Phase 2 is next.
 
-| Phase | Scope |
-|-------|-------|
-| **1 (MVP)** | Pixel cats on the floor of the screen, click-through, create and remember cats, mood, petting, pick up and drop, cue ring tricks, menu bar menu, macOS build |
-| **2** | Dogs, cats walk on top of your windows, cursor play, cats playing together, hide during fullscreen apps, Gemma thought bubbles |
-| **3** | Soft, ink and silhouette styles, talk to them, name help, daily diary, cursor-wave cues, multiple monitors |
+| Phase | Scope | Status |
+|-------|-------|--------|
+| **1 (MVP)** | Pixel pets on the floor of the screen, click-through, create and remember pets, mood, petting, pick up and drop, cue ring tricks, menu bar menu, macOS build | ✅ Done |
+| **2** | Dogs, pets walk on top of your windows, cursor play, pets playing together, hide during fullscreen apps, Gemma thought bubbles | 🐕 Dogs done, the rest planned |
+| **3** | Soft, ink and silhouette styles, talk to them, name help, daily diary, cursor-wave cues, multiple monitors | ⏳ Planned |
 
 ## Tech
 
 [Tauri 2](https://v2.tauri.app) with Rust for the Mac parts (transparent always-on-top overlay, click-through, screen area, idle time, menu bar, save file) and TypeScript with [PixiJS 8](https://pixijs.com) for the pets. The pet brain (mood, behaviour, trick learning) is plain, unit-tested TypeScript.
 
-The art is GenAI pixel art drawn as cut-out parts (body, head, ears, eyes, tail, legs) plus a few key poses. Code animates the parts, and an art pipeline (`npm run art`) turns generated images into crisp, consistent sprite sheets.
+The art is GenAI pixel art drawn as cut-out parts plus a few key poses (see [Art](#art)). Code animates the parts, and an art pipeline (`npm run art`) turns generated images into crisp, consistent sprite sheets.
 
 ## Releasing
 
@@ -102,3 +139,4 @@ Push a `vX.Y.Z` tag. The release workflow builds a universal `.dmg` (Apple Silic
 - [Product specification](docs/product.md): what Windowsill does, precisely
 - [macOS release checklist](docs/release-checklist.md): the manual checks before a release
 - [Phase 1 implementation plan](docs/superpowers/plans/2026-10-31-windowsill-phase-1.md): the build, task by task
+- [Changelog](CHANGELOG.md): what changed, pull request by pull request
