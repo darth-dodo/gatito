@@ -56,7 +56,12 @@ Windowsill is macOS 13 or newer.
 
 1. Download the `.dmg` from [GitHub Releases](https://github.com/darth-dodo/windowsill/releases) once a release is published (releases start as drafts), or build it yourself with `npm ci && npm run tauri build` (Rust and Node needed; the `.dmg` lands in `src-tauri/target/release/bundle/dmg/`).
 2. Open the `.dmg` and drag Windowsill to Applications.
-3. The app is **unsigned**, so the first launch needs a right-click on Windowsill, then **Open**, then **Open** again in the warning. After that it opens normally.
+3. The app is **unsigned** (ad-hoc signed only), so macOS blocks the first launch:
+   - **macOS 15 Sequoia and newer**: open Windowsill once and dismiss the warning, then go to **System Settings > Privacy & Security**, scroll to Security and click **Open Anyway** next to Windowsill, and confirm.
+   - **macOS 13 and 14**: right-click Windowsill, choose **Open**, then **Open** again in the warning.
+   - If macOS says the app **is damaged and can't be opened**, clear the download quarantine with `xattr -dr com.apple.quarantine /Applications/Windowsill.app` and open it again.
+
+   After the first launch it opens normally.
 
 There is no Dock icon; Windowsill lives in the menu bar.
 
