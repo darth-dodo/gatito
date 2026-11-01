@@ -1,4 +1,4 @@
-import { Application } from 'pixi.js';
+import { Application, type Spritesheet } from 'pixi.js';
 import type { Floor, Point, Rect } from '../ipc';
 import { activeSeconds, clampFrameDelta } from '../brain/clock';
 import { fade, updateLearned } from '../brain/learning';
@@ -43,6 +43,13 @@ export interface PetOptions {
 interface Living {
   body: Body;
   controller: PetController;
+  /** The coat has walk cycle frames and TUNING.walkMode asks for them. */
+  walkFrames: boolean;
+}
+
+/** True when TUNING.walkMode asks for walk cycle frames and this coat's sheet has them. */
+function usesWalkFrames(atlas: Spritesheet): boolean {
+  return TUNING.walkMode === 'frames' && atlas.textures['walk-1'] !== undefined;
 }
 
 /** Places pet `index` of `count` evenly along the floor; a lone pet starts in the middle. */
@@ -194,7 +201,7 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
     world.add(body);
     stage.add(pet, atlas);
     const rng = seededRng((baseSeed + spawned++ * SEED_STRIDE) >>> 0);
-    pets.push({ body, controller: new PetController(pet, body, rng) });
+    pets.push({ body, controller: new PetController(pet, body, rng), walkFrames: usesWalkFrames(atlas) });
   };
 
   for (const [i, pet] of options.pets.entries()) {
@@ -238,7 +245,7 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
     world.step(dt);
 
     const nowSeconds = performance.now() / 1000;
-    for (const { body: b, controller: c } of pets) {
+    for (const { body: b, controller: c, walkFrames } of pets) {
       if (active > 0) {
         c.pet = updateLearned({
           ...c.pet,
@@ -247,7 +254,8 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
         });
       }
       const { name, t } = c.anim();
-      stage.draw(c.pet.id, b, rigPose(name, t, c.pet.mood));
+      const frame = rigPose(name, t, c.pet.mood, { walkFrames });
+      stage.draw(c.pet.id, b, frame);
       stage.drawZs(c.pet.id, name === 'nap' || name === 'cuddle-nap' ? floatingZs(t) : []);
       const tapAge = nowSeconds - (tappedAt.get(c.pet.id) ?? -Infinity);
       stage.drawHearts(c.pet.id, name === 'purr' ? risingHearts(t) : heartBurst(tapAge));
@@ -283,7 +291,10 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
       const living = find();
       if (!living) return;
       const next = { ...living.controller.pet, name: pet.name, colour: pet.colour, style: pet.style };
-      if (atlas) stage.add(next, atlas);
+      if (atlas) {
+        stage.add(next, atlas);
+        living.walkFrames = usesWalkFrames(atlas);
+      }
       living.controller.pet = next;
     },
   };

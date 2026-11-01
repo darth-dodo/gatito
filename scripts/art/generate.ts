@@ -1,5 +1,5 @@
 // Generates cut-out puppet source art with OpenRouter. Usage:
-//   npm run art:generate -- --species cat --coat orange-tabby [--only tail,sit] [--reference path]
+//   npm run art:generate -- --species cat --coat orange-tabby [--only tail,sit] [--reference path] [--max-calls N]
 // Requires OPENROUTER_API_KEY in the environment (never read from or written to disk here).
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -15,6 +15,11 @@ const REQUEST_TIMEOUT_MS = 90_000;
 
 /** A failure worth retrying (timeout, 408, 429, 5xx). Anything else fails fast. */
 class Retryable extends Error {}
+
+/** One frame of a smooth six-frame side-view walk cycle, the whole cat with its tail, walking in place. */
+function walkFrame(n: string, legs: string): string {
+  return `whole cat walking in place, frame ${n} of a smooth six-frame side-view walk cycle: ${legs}. Exactly four legs. Same cat, same body, head and tail as the reference, only the legs move; the back stays level, the tail is held as in the reference`;
+}
 
 const SUBJECTS: Record<string, string> = {
   reference: 'one full-body cat standing on four legs, whole body including head, ears, tail and all four legs, relaxed neutral pose',
@@ -37,16 +42,25 @@ const SUBJECTS: Record<string, string> = {
   stretch: 'whole cat in a stretch, front legs forward, rear raised, without the tail',
   groom: 'whole cat sitting and licking a raised paw, without the tail',
   'sit-up': 'whole cat sitting up on hind legs, front paws held up, without the tail',
+  'walk-1': walkFrame('1', 'the near front leg reaches forward and the near back leg is stretched back; the far legs are under the body'),
+  'walk-2': walkFrame('2', 'the near front paw is planted under the chest, the far back leg swings forward, the far front leg starts to lift behind'),
+  'walk-3': walkFrame('3', 'the far front leg passes under the body, the near back leg swings forward, the near front leg pushes back'),
+  'walk-4': walkFrame('4', 'the far front leg reaches forward and the far back leg is stretched back; the near legs are under the body'),
+  'walk-5': walkFrame('5', 'the far front paw is planted under the chest, the near back leg swings forward, the near front leg starts to lift behind'),
+  'walk-6': walkFrame('6', 'the near front leg passes under the body, the far back leg swings forward, the far front leg pushes back'),
   dangle: 'whole cat hanging limp as if lifted by the scruff from above, body hanging, front paws dangling down, hind legs dangling, tail hanging straight down, no hand, no person, nothing holding it',
 };
 const PARTS = ['body', 'head', 'ear-near', 'ear-far', 'eyes-open', 'eyes-closed', 'tail', 'leg-front-near', 'leg-front-far', 'leg-back-near', 'leg-back-far', 'paw-raised'];
 const POSES = ['sit', 'loaf', 'sleep-curl', 'belly-up', 'stretch', 'groom', 'sit-up', 'dangle'];
+// The walk-1..walk-6 frames are optional and only generated when named with --only.
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 ? process.argv[i + 1] : undefined;
 }
 
+/** A lower per-run cap (--max-calls N) for a small batch; never above MAX_CALLS. */
+const callCap = Math.min(MAX_CALLS, Number(arg('max-calls') ?? MAX_CALLS) || MAX_CALLS);
 let calls = 0;
 let totalCost = 0;
 let sawCost = false;
@@ -58,7 +72,7 @@ async function generate(prompt: string, key: string, referencePath?: string): Pr
     content.push({ type: 'image_url', image_url: { url: `data:image/png;base64,${b64}` } });
   }
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    if (calls >= MAX_CALLS) throw new Error(`Call cap of ${MAX_CALLS} per run reached; aborting.`);
+    if (calls >= callCap) throw new Error(`Call cap of ${callCap} per run reached; aborting.`);
     calls++;
     try {
       let res: Response;

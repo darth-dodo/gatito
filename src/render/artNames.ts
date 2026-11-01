@@ -29,5 +29,12 @@ export const POSE_NAMES = [
   'dangle',
 ] as const;
 
+/**
+ * Optional whole-cat walk cycle frames (with the tail), used when TUNING.walkMode is 'frames'.
+ * A coat without them walks as a puppet.
+ */
+export const WALK_FRAME_NAMES = ['walk-1', 'walk-2', 'walk-3', 'walk-4', 'walk-5', 'walk-6'] as const;
+
+export type WalkFrameName = (typeof WALK_FRAME_NAMES)[number];
 export type PartName = (typeof PART_NAMES)[number];
 export type PoseName = (typeof POSE_NAMES)[number];

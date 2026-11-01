@@ -2,12 +2,14 @@
 // pixels and no part brings its own outline into the body. Usage:
 //   npx tsx scripts/art/cut-parts.ts [--species cat] [--coat orange-tabby]
 // Reads art/source/<species>/<coat>/reference.png, generated/<part>.png (footprints) and cut.json, and
-// writes the 12 part images next to the reference as 96 by 96 PNGs.
+// writes the 12 part images next to the reference as 96 by 96 PNGs. Generated walk frames in generated/
+// are locked to the reference's colours (so they recolour like it and their stripes do not flicker) and
+// cleaned of stray specks, then written next to it too.
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import sharp from 'sharp';
-import { ART_CELL, PART_NAMES, type PartName } from '../../src/render/artNames';
+import { ART_CELL, PART_NAMES, WALK_FRAME_NAMES, type PartName } from '../../src/render/artNames';
 import { prepare } from './build';
 
 const CELL = ART_CELL;
@@ -173,6 +175,65 @@ export async function cutParts(dir: string): Promise<Record<PartName, Buffer>> {
   return out;
 }
 
+/** The distinct opaque colours of an RGBA image. */
+export function paletteOf(data: Buffer): [number, number, number][] {
+  const seen = new Map<number, [number, number, number]>();
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) continue;
+    seen.set((data[i] << 16) | (data[i + 1] << 8) | data[i + 2], [data[i], data[i + 1], data[i + 2]]);
+  }
+  return [...seen.values()];
+}
+
+/** Snaps every opaque pixel to the nearest palette colour, in place. */
+export function lockPalette(data: Buffer, palette: readonly [number, number, number][]): void {
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] === 0) continue;
+    let best = palette[0];
+    let bestD = Infinity;
+    for (const c of palette) {
+      const d = (data[i] - c[0]) ** 2 + (data[i + 1] - c[1]) ** 2 + (data[i + 2] - c[2]) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        best = c;
+      }
+    }
+    data[i] = best[0];
+    data[i + 1] = best[1];
+    data[i + 2] = best[2];
+  }
+}
+
+/** Clears opaque islands (8-connected) smaller than `min` pixels, in place: stray specks around the art. */
+export function dropIslands(data: Buffer, min: number, size = CELL): void {
+  const seen = new Uint8Array(size * size);
+  for (let start = 0; start < size * size; start++) {
+    if (seen[start] || data[start * 4 + 3] === 0) continue;
+    const island = [start];
+    seen[start] = 1;
+    for (let k = 0; k < island.length; k++) {
+      const x = island[k] % size;
+      const y = Math.floor(island[k] / size);
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const xx = x + dx;
+          const yy = y + dy;
+          if (xx < 0 || yy < 0 || xx >= size || yy >= size) continue;
+          const j = yy * size + xx;
+          if (!seen[j] && data[j * 4 + 3] > 0) {
+            seen[j] = 1;
+            island.push(j);
+          }
+        }
+      }
+    }
+    if (island.length < min) for (const j of island) data[j * 4 + 3] = 0;
+  }
+}
+
+/** Specks smaller than this are not part of a walk frame's cat. */
+const MIN_ISLAND = 8;
+
 const option = (args: string[], flag: string, fallback: string): string => {
   const i = args.indexOf(flag);
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback;
@@ -197,6 +258,20 @@ export async function main(args: string[]): Promise<number> {
       .toFile(join(dir, `${name}.png`));
   }
   console.log(`cut ${PART_NAMES.length} parts in ${dir}`);
+
+  const frames = WALK_FRAME_NAMES.filter((n) => existsSync(join(dir, 'generated', `${n}.png`)));
+  if (frames.length > 0) {
+    const palette = paletteOf(await prepare(join(dir, 'reference.png'), 'reference'));
+    for (const name of frames) {
+      const data = await prepare(join(dir, 'generated', `${name}.png`), name);
+      lockPalette(data, palette);
+      dropIslands(data, MIN_ISLAND);
+      await sharp(data, { raw: { width: CELL, height: CELL, channels: 4 } })
+        .png({ compressionLevel: 9 })
+        .toFile(join(dir, `${name}.png`));
+    }
+    console.log(`locked ${frames.length} walk frames to the reference's colours`);
+  }
   return 0;
 }
 

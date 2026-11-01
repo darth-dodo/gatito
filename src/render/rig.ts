@@ -1,7 +1,7 @@
 import rigJson from '../../art/rig/cat.json';
 import type { BehaviourName } from '../brain/behaviour';
 import type { Mood, Trick } from '../brain/types';
-import { ART_CELL, PART_NAMES, type PartName, type PoseName } from './artNames';
+import { ART_CELL, PART_NAMES, WALK_FRAME_NAMES, type PartName, type PoseName, type WalkFrameName } from './artNames';
 
 /** Every animation a pet can play: its behaviours, the tricks, and the handling and petting moments. */
 export type AnimName =
@@ -29,7 +29,7 @@ export interface PartPose {
  * `flipX` mirrors relative to the body's facing; `rotation` turns the whole pet about the body pivot.
  */
 export interface RigFrame {
-  pose: PoseName | 'puppet';
+  pose: PoseName | WalkFrameName | 'puppet';
   parts: Partial<Record<PartName, PartPose>>;
   flipX: boolean;
   rotation: number;
@@ -108,6 +108,10 @@ const WALK_BOB_PX = 1;
 
 /** Part rotations snap to steps this size (3 degrees), so pixel art turns in clean steps instead of shimmering. */
 export const ROTATION_STEP = Math.PI / 60;
+
+// Walk cycle frames ('frames' walk mode): a natural cadence, faster for zoomies.
+const WALK_FPS = 9;
+const ZOOMIES_FPS = WALK_FPS * (ZOOMIES_STEP_HZ / WALK_STEP_HZ);
 
 // Breathing, in cell pixels.
 const BREATH_PX = 1;
@@ -297,8 +301,26 @@ function keyPose(pose: PoseName, anim: AnimName, t: number, mood: Mood): RigFram
   return { pose, parts, flipX: false, rotation };
 }
 
+/** A walk cycle frame: the whole cat with its tail, so no parts are layered on. */
+function walkFrame(anim: AnimName, t: number): RigFrame {
+  const fps = anim === 'zoomies' ? ZOOMIES_FPS : WALK_FPS;
+  const i = Math.floor(Math.max(0, t) * fps) % WALK_FRAME_NAMES.length;
+  return {
+    pose: WALK_FRAME_NAMES[i]!,
+    parts: { body: { x: 0, y: 0, rotation: 0, visible: true } },
+    flipX: false,
+    rotation: 0,
+  };
+}
+
+export interface RigOptions {
+  /** Play the walk cycle frames for walking (the coat has them and TUNING.walkMode is 'frames'). */
+  walkFrames?: boolean;
+}
+
 /** Pure: the drawn frame for an animation at time t (seconds since it started) and mood. */
-export function rigPose(anim: AnimName, t: number, mood: Mood): RigFrame {
+export function rigPose(anim: AnimName, t: number, mood: Mood, options: RigOptions = {}): RigFrame {
+  if (options.walkFrames && (anim === 'walk' || anim === 'wander' || anim === 'zoomies')) return walkFrame(anim, t);
   if (anim === 'roll-over') {
     const p = clamp01(t / ANIM_SECONDS['roll-over']);
     if (p >= ROLL_BELLY_FROM && p <= ROLL_BELLY_TO) {

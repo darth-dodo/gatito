@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { closedEye, cut, dilate, insidePolygon, polygonMask } from '../../scripts/art/cut-parts';
+import { closedEye, cut, dilate, dropIslands, insidePolygon, lockPalette, paletteOf, polygonMask } from '../../scripts/art/cut-parts';
 
 describe('cut-parts helpers', () => {
   it('tests pixel centres against a polygon', () => {
@@ -45,5 +45,26 @@ describe('cut-parts helpers', () => {
     expect(px(2, 3)).toEqual([6, 1, 1, 255]);
     expect(px(1, 2)).toEqual([6, 1, 1, 255]);
     expect(px(0, 0)[3]).toBe(0);
+  });
+});
+
+describe('walk frame clean-up', () => {
+  it('locks colours to the reference palette', () => {
+    const data = Buffer.from([250, 160, 80, 255, 10, 5, 0, 255, 0, 0, 0, 0]);
+    lockPalette(data, [[246, 164, 78], [6, 1, 1]]);
+    expect([...data]).toEqual([246, 164, 78, 255, 6, 1, 1, 255, 0, 0, 0, 0]);
+    expect(paletteOf(data)).toHaveLength(2);
+  });
+
+  it('drops small islands and keeps the cat', () => {
+    const size = 10;
+    const data = Buffer.alloc(size * size * 4);
+    const on = (x: number, y: number) => (data[(y * size + x) * 4 + 3] = 255);
+    for (let y = 4; y < 8; y++) for (let x = 2; x < 8; x++) on(x, y);
+    on(0, 0);
+    on(1, 0);
+    dropIslands(data, 8, size);
+    expect(data[3]).toBe(0);
+    expect(data[(5 * size + 4) * 4 + 3]).toBe(255);
   });
 });

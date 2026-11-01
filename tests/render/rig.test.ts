@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Mood } from '../../src/brain/types';
-import { ANIM_SECONDS, rigPose, type AnimName, type RigFrame } from '../../src/render/rig';
+import { ANIM_SECONDS, rigPose, stepAngle, type AnimName, type RigFrame } from '../../src/render/rig';
 import { floatingZs } from '../../src/render/effects';
 
 const m: Mood = { affection: 60, energy: 60 };
@@ -160,3 +160,40 @@ describe('floatingZs', () => {
     expect(b.y).toBeLessThan(a.y);
   });
 });
+
+describe('walk cycle frames', () => {
+  it('cycles walk-1..walk-6 at a natural cadence when asked, without layered parts', () => {
+    const names = new Set<string>();
+    for (let t = 0; t < 1; t += 0.01) {
+      const f = rigPose('walk', t, m, { walkFrames: true });
+      names.add(f.pose);
+      expect(Object.keys(f.parts)).toEqual(['body']);
+    }
+    expect([...names].sort()).toEqual(['walk-1', 'walk-2', 'walk-3', 'walk-4', 'walk-5', 'walk-6']);
+    // About 9 frames a second: walk-1 shows for roughly a ninth of a second.
+    expect(rigPose('walk', 0.1, m, { walkFrames: true }).pose).toBe('walk-1');
+    expect(rigPose('walk', 0.12, m, { walkFrames: true }).pose).toBe('walk-2');
+    expect(rigPose('zoomies', 0.12, m, { walkFrames: true }).pose).not.toBe('walk-2');
+  });
+
+  it('keeps the puppet without the option and for other animations', () => {
+    expect(rigPose('walk', 0.5, m).pose).toBe('puppet');
+    expect(rigPose('idle-sit', 0.5, m, { walkFrames: true }).pose).toBe('sit');
+  });
+});
+
+describe('stepAngle', () => {
+  it('snaps rotations to 3 degree steps', () => {
+    const deg = Math.PI / 180;
+    expect(stepAngle(4 * deg)).toBeCloseTo(3 * deg, 9);
+    expect(stepAngle(5 * deg)).toBeCloseTo(6 * deg, 9);
+    expect(stepAngle(-1 * deg)).toBe(0);
+    for (const f of samples('walk', 0, 1)) {
+      for (const p of Object.values(f.parts)) {
+        expect(Math.abs(p.rotation / (3 * deg) - Math.round(p.rotation / (3 * deg)))).toBeLessThan(1e-9);
+        expect(Number.isInteger(p.x) && Number.isInteger(p.y)).toBe(true);
+      }
+    }
+  });
+});
+
