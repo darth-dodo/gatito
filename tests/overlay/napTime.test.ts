@@ -5,7 +5,7 @@ import { newPairings } from '../../src/brain/learning';
 import { tickMood } from '../../src/brain/mood';
 import { seededRng } from '../../src/brain/rng';
 import type { Mood, Pet } from '../../src/brain/types';
-import { CURL_SECONDS, FADE_SECONDS, NapTime } from '../../src/overlay/napTime';
+import { CURL_SECONDS, FADE_SECONDS, NapTime, callOverX } from '../../src/overlay/napTime';
 import { PetController } from '../../src/sim/controller';
 import { World, type Body } from '../../src/sim/world';
 
@@ -43,6 +43,7 @@ describe('nap time', () => {
     expect(m).toEqual(mood);
 
     nap.setOn(false);
+    // Awake again, the clock runs again: only the ~1.5 s of fading in counts, not the hour of napping.
     expect(nap.hidden).toBe(false);
     for (let t = 0; t < FADE_SECONDS / 2; t += FRAME) step();
     expect(nap.alpha).toBeGreaterThan(0);
@@ -50,7 +51,8 @@ describe('nap time', () => {
     for (let t = 0; t < FADE_SECONDS + 0.5; t += FRAME) step();
     expect(nap.alpha).toBe(1);
     expect(nap.curled).toBe(false);
-    expect(m).toBeDefined();
+    expect(m.affection).toBeCloseTo(mood.affection, 1);
+    expect(m.energy).toBeCloseTo(mood.energy, 1);
   });
 
   it('waking again mid-fade fades back in from where it was', () => {
@@ -76,6 +78,15 @@ describe('nap time', () => {
 });
 
 describe('call over', () => {
+  it('is a no-op during Nap time and aims at the centre otherwise', () => {
+    const nap = new NapTime();
+    expect(callOverX(nap, floor, 84)).toBe(500 - 42);
+    nap.setOn(true);
+    expect(callOverX(nap, floor, 84)).toBeNull();
+    nap.setOn(false);
+    expect(callOverX(nap, floor, 84)).toBe(500 - 42);
+  });
+
   it('call over walks to the centre', () => {
     const body: Body = {
       id: 'mochi', x: 100, y: 720, vx: 0, vy: 0, facing: 1,

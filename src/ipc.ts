@@ -57,18 +57,11 @@ export const ipc = {
   setMenuPets(pets: { id: string; name: string }[]): Promise<void> {
     return invoke<void>("set_menu_pets", { pets });
   },
-  /** Exit the app now (after the front end has saved). */
-  quitApp(): Promise<void> {
-    return invoke<void>("quit_app");
-  },
   onNapTime(cb: (on: boolean) => void): Promise<UnlistenFn> {
     return listen<{ on: boolean }>("nap-time", (event) => cb(event.payload.on));
   },
   onCallOver(cb: (id: string) => void): Promise<UnlistenFn> {
     return listen<{ id: string }>("call-over", (event) => cb(event.payload.id));
-  },
-  onQuitRequested(cb: () => void): Promise<UnlistenFn> {
-    return listen("quit-requested", () => cb());
   },
   /** Menu "New pet…"; a later step opens Task 12's window. */
   onMenuNewPet(cb: () => void): Promise<UnlistenFn> {

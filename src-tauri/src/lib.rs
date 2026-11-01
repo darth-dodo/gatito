@@ -29,8 +29,7 @@ pub fn run() {
             store::write_save,
             store::quarantine_save,
             idle::user_idle_seconds,
-            tray::set_menu_pets,
-            tray::quit_app
+            tray::set_menu_pets
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

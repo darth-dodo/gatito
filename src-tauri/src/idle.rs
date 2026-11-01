@@ -5,8 +5,9 @@ pub fn idle_seconds() -> u64 {
         .unwrap_or(0)
 }
 
+/// Async so Tauri runs it off the main thread.
 #[tauri::command]
-pub fn user_idle_seconds() -> u64 {
+pub async fn user_idle_seconds() -> u64 {
     idle_seconds()
 }
 

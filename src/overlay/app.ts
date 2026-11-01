@@ -11,7 +11,7 @@ import { floatingZs } from '../render/effects';
 import { CAT_BOX, rigPose } from '../render/rig';
 import { PetStage } from '../render/stage';
 import { PetController } from '../sim/controller';
-import { NapTime } from './napTime';
+import { NapTime, callOverX } from './napTime';
 import { World, type Body } from '../sim/world';
 
 /** Hit boxes go to the host at most this often. */
@@ -193,8 +193,8 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Pet
     setNapTime: (on) => nap.setOn(on),
     callOver(id) {
       const p = pets.find((q) => q.controller.pet.id === id);
-      if (!p) return;
-      p.controller.start({ kind: 'go-to', x: floor.x + floor.width / 2 - p.body.width / 2 });
+      const x = p ? callOverX(nap, floor, p.body.width) : null;
+      if (p && x !== null) p.controller.start({ kind: 'go-to', x });
     },
     stop() {
       for (const off of unlisten) off();

@@ -2,16 +2,12 @@ use serde::Deserialize;
 use serde_json::json;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::Duration;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::tray::TrayIconBuilder;
 use tauri::{AppHandle, Emitter, Manager, State, image::Image};
 use tauri_plugin_autostart::ManagerExt;
 
 const TRAY_ID: &str = "windowsill";
-/// If the front end has not exited this long after `quit-requested`, Rust exits itself.
-const QUIT_FALLBACK: Duration = Duration::from_secs(1);
-
 /// A pet as the menu needs it.
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct MenuPet {
@@ -25,6 +21,18 @@ pub struct MenuPet {
 pub struct TrayState {
     pets: Mutex<Vec<MenuPet>>,
     nap: AtomicBool,
+    quit: QuitGuard,
+}
+
+/// Lets only the first Quit click through, so exit (and Task 12's save hook) runs once.
+#[derive(Default)]
+pub struct QuitGuard(AtomicBool);
+
+impl QuitGuard {
+    /// True the first time it is called, false ever after.
+    pub fn first(&self) -> bool {
+        !self.0.swap(true, Ordering::SeqCst)
+    }
 }
 
 /// What a clicked menu entry means.
@@ -141,8 +149,16 @@ fn refresh(app: &AppHandle) {
     let state = app.state::<TrayState>();
     let pets = state.pets.lock().map(|p| p.clone()).unwrap_or_default();
     let nap = state.nap.load(Ordering::SeqCst);
-    if let (Some(tray), Ok(menu)) = (app.tray_by_id(TRAY_ID), build_menu(app, &pets, nap)) {
-        let _ = tray.set_menu(Some(menu));
+    let Some(tray) = app.tray_by_id(TRAY_ID) else {
+        return;
+    };
+    match build_menu(app, &pets, nap) {
+        Ok(menu) => {
+            if let Err(e) = tray.set_menu(Some(menu)) {
+                eprintln!("windowsill: could not set the menu bar menu: {e}");
+            }
+        }
+        Err(e) => eprintln!("windowsill: could not build the menu bar menu: {e}"),
     }
 }
 
@@ -178,12 +194,9 @@ fn handle(app: &AppHandle, action: MenuAction) {
             refresh(app);
         }
         MenuAction::Quit => {
-            let _ = app.emit("quit-requested", ());
-            let app = app.clone();
-            std::thread::spawn(move || {
-                std::thread::sleep(QUIT_FALLBACK);
+            if app.state::<TrayState>().quit.first() {
                 app.exit(0);
-            });
+            }
         }
     }
 }
@@ -214,15 +227,17 @@ pub fn set_menu_pets(app: AppHandle, state: State<TrayState>, pets: Vec<MenuPet>
     refresh(&app);
 }
 
-/// The front end calls this once it has saved.
-#[tauri::command]
-pub fn quit_app(app: AppHandle) {
-    app.exit(0);
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn quit_guard_lets_only_the_first_call_through() {
+        let g = QuitGuard::default();
+        assert!(g.first());
+        assert!(!g.first());
+        assert!(!g.first());
+    }
 
     #[test]
     fn parses_fixed_ids() {

@@ -61,3 +61,8 @@ export class NapTime {
     }
   }
 }
+
+/** Left edge for a pet of `width` to stand at the screen middle, or null while Nap time has the cats curled up. */
+export function callOverX(nap: NapTime, floor: { x: number; width: number }, width: number): number | null {
+  return nap.curled ? null : floor.x + floor.width / 2 - width / 2;
+}

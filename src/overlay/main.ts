@@ -37,9 +37,6 @@ function testPet(): Pet {
   };
 }
 
-/** Saves everything before the app exits. A no-op until Task 12 owns the save file. */
-async function flushBeforeQuit(): Promise<void> {}
-
 async function boot(): Promise<void> {
   const pets = [testPet()];
   const controls = await startPets(tauriHost, { pets, container: document.body });
@@ -47,9 +44,6 @@ async function boot(): Promise<void> {
   await Promise.all([
     ipc.onNapTime((on) => controls.setNapTime(on)),
     ipc.onCallOver((id) => controls.callOver(id)),
-    ipc.onQuitRequested(() => {
-      void flushBeforeQuit().finally(() => ipc.quitApp());
-    }),
   ]);
   // Task 12 calls this again whenever pets change.
   await ipc.setMenuPets(pets.map((p) => ({ id: p.id, name: p.name })));
