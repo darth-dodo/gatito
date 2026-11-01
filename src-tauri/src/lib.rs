@@ -33,8 +33,9 @@ pub fn run() {
             store::quarantine_save,
             idle::user_idle_seconds,
             tray::set_menu_pets,
+            tray::set_nap_time,
             create::open_create_window,
-            create::create_window_pet,
+            create::create_window_target,
             quit::quit_ready
         ])
         .build(tauri::generate_context!())

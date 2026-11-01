@@ -16,7 +16,7 @@ pub struct MenuPet {
 }
 
 /// Menu state kept in Rust: the pets to list and the Nap time flag.
-/// Nap time lives in memory only for now; the front end will persist it in settings.
+/// The front end saves Nap time in settings and restores it here on start (`set_nap_time`).
 #[derive(Default)]
 pub struct TrayState {
     pets: Mutex<Vec<MenuPet>>,
@@ -224,6 +224,13 @@ pub fn set_menu_pets(app: AppHandle, state: State<TrayState>, pets: Vec<MenuPet>
     if let Ok(mut guard) = state.pets.lock() {
         *guard = pets;
     }
+    refresh(&app);
+}
+
+/// The front end restores the saved Nap time on start; only the check mark changes here.
+#[tauri::command]
+pub fn set_nap_time(app: AppHandle, state: State<TrayState>, on: bool) {
+    state.nap.store(on, Ordering::SeqCst);
     refresh(&app);
 }
 

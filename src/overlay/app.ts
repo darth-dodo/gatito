@@ -38,6 +38,8 @@ export interface PetOptions {
   seed?: number;
   /** Multiplies the clamped frame delta for the simulation only. Defaults to 1. */
   timeScale?: number;
+  /** Nap time as saved; when on, the pets start hidden. Defaults to off. */
+  napTime?: boolean;
   container: HTMLElement;
 }
 
@@ -186,7 +188,7 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
   const stage = new PetStage(app);
   const pushHitboxes = hitboxPusher(host);
   const pets: Living[] = [];
-  const nap = new NapTime();
+  const nap = new NapTime(options.napTime ?? false);
   let napT = 0;
   /** Ids being added; removing one before its art loads cancels it. */
   const arriving = new Set<string>();

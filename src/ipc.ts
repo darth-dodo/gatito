@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
+import type { CreateWindowTarget, MenuPet } from "./overlay/menu";
 import type { PetsChanged } from "./overlay/persistence";
 
 /** Usable screen area in logical pixels, relative to the overlay window. */
@@ -44,13 +45,13 @@ export const ipc = {
   setHitboxes(rects: Rect[]): Promise<void> {
     return invoke<void>("set_hitboxes", { boxes: rects });
   },
-  /** Open (or bring forward) the New pet window; with an id it edits that pet. */
-  openCreateWindow(petId: string | null): Promise<void> {
-    return invoke<void>("open_create_window", { petId });
+  /** Open (or bring forward) the New pet window; with an id it edits that pet, with `rehome` it asks to rehome it. */
+  openCreateWindow(target: CreateWindowTarget): Promise<void> {
+    return invoke<void>("open_create_window", { petId: target.petId, rehome: target.rehome });
   },
-  /** The pet the New pet window was opened for, or null for a new pet. */
-  createWindowPet(): Promise<string | null> {
-    return invoke<string | null>("create_window_pet");
+  /** What the New pet window was opened for (no pet means a new one). */
+  createWindowTarget(): Promise<CreateWindowTarget> {
+    return invoke<CreateWindowTarget>("create_window_target");
   },
   /** Tell Rust the save is flushed so the app can exit. */
   quitReady(): Promise<void> {
@@ -82,8 +83,12 @@ export const ipc = {
     return invoke<number>("user_idle_seconds");
   },
   /** Rebuild the menu bar menu's per-pet submenus. */
-  setMenuPets(pets: { id: string; name: string }[]): Promise<void> {
+  setMenuPets(pets: MenuPet[]): Promise<void> {
     return invoke<void>("set_menu_pets", { pets });
+  },
+  /** Set the menu's Nap time check mark (on start, from the save). */
+  setNapTime(on: boolean): Promise<void> {
+    return invoke<void>("set_nap_time", { on });
   },
   onNapTime(cb: (on: boolean) => void): Promise<UnlistenFn> {
     return listen<{ on: boolean }>("nap-time", (event) => cb(event.payload.on));
@@ -91,7 +96,7 @@ export const ipc = {
   onCallOver(cb: (id: string) => void): Promise<UnlistenFn> {
     return listen<{ id: string }>("call-over", (event) => cb(event.payload.id));
   },
-  /** Menu "New pet…"; a later step opens Task 12's window. */
+  /** Menu "New pet…". */
   onMenuNewPet(cb: () => void): Promise<UnlistenFn> {
     return listen("menu-new-pet", () => cb());
   },

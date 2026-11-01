@@ -75,6 +75,30 @@ describe('nap time', () => {
     expect(nap.curled).toBe(false);
     expect(nap.alpha).toBe(1);
   });
+
+  it('restores Nap time from settings: already hidden, clock stopped, no curl or fade', () => {
+    const saved = { napTime: true };
+    const nap = new NapTime(saved.napTime);
+    expect(nap.on).toBe(true);
+    expect(nap.hidden).toBe(true);
+    expect(nap.curled).toBe(true);
+    expect(nap.alpha).toBe(0);
+    expect(activeSeconds(FRAME, { userIdleSeconds: 0, napTime: nap.on })).toBe(0);
+    run(nap, CURL_SECONDS + FADE_SECONDS);
+    expect(nap.hidden).toBe(true);
+
+    nap.setOn(false);
+    run(nap, FADE_SECONDS + FRAME);
+    expect(nap.alpha).toBe(1);
+    expect(nap.curled).toBe(false);
+  });
+
+  it('restores Nap time off from settings as awake', () => {
+    const nap = new NapTime(false);
+    expect(nap.on).toBe(false);
+    expect(nap.curled).toBe(false);
+    expect(nap.alpha).toBe(1);
+  });
 });
 
 describe('call over', () => {

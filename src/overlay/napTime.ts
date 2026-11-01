@@ -15,6 +15,15 @@ export class NapTime {
   private level = 1;
   private requested = false;
 
+  /** Starts awake, or, when Nap time was on at the last quit, already hidden (no curl or fade). */
+  constructor(on = false) {
+    if (on) {
+      this.requested = true;
+      this.phase = 'hidden';
+      this.level = 0;
+    }
+  }
+
   /** The Nap time toggle, which is what `activeSeconds` must see. */
   get on(): boolean {
     return this.requested;
