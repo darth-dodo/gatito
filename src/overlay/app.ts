@@ -7,7 +7,7 @@ import { tickMood } from '../brain/mood';
 import { seededRng } from '../brain/rng';
 import { TUNING } from '../brain/tuning';
 import type { Colour, Pet } from '../brain/types';
-import { floatingZs, risingHearts } from '../render/effects';
+import { floatingZs, heartBurst, risingHearts } from '../render/effects';
 import { CAT_BOX, rigPose } from '../render/rig';
 import { PetStage } from '../render/stage';
 import { PetController } from '../sim/controller';
@@ -112,8 +112,10 @@ function hitboxPusher(host: PetHost): (bodies: readonly Body[], now: number, hel
 }
 
 /**
- * Feeds the canvas's pointer events to the router. The overlay only gets them while the cursor
- * is over a pet hit box; a pet captures the pointer as it lifts so the drag survives fast moves.
+ * Feeds the canvas's button events to the router: press, drag, release and right click. Strokes
+ * never come from here; they come from the host cursor (see startPets). The overlay only gets
+ * pointer events while the cursor is over a pet hit box; a pet captures the pointer as it lifts
+ * so the drag survives fast moves.
  */
 function listenPointer(canvas: HTMLCanvasElement, router: InputRouter): Unlisten {
   const off = new AbortController();
@@ -123,7 +125,7 @@ function listenPointer(canvas: HTMLCanvasElement, router: InputRouter): Unlisten
     'pointermove',
     (e) => {
       // Capture as the pet lifts, so a fast drag keeps every move and the release.
-      if (router.pointerMove(e.clientX, e.clientY, e.timeStamp / 1000, e.buttons) === 'lifted') {
+      if (router.pointerMove(e.clientX, e.clientY, e.buttons) === 'lifted') {
         canvas.setPointerCapture(e.pointerId);
       }
     },
@@ -137,8 +139,15 @@ function listenPointer(canvas: HTMLCanvasElement, router: InputRouter): Unlisten
     },
     opts,
   );
-  const release = (e: PointerEvent): void => router.pointerUp(e.clientX, e.clientY);
-  canvas.addEventListener('pointerup', release, opts);
+  canvas.addEventListener(
+    'pointerup',
+    (e) => {
+      if (e.button === 0) router.pointerUp(e.clientX, e.clientY, performance.now() / 1000);
+      else router.release();
+    },
+    opts,
+  );
+  const release = (): void => router.release();
   canvas.addEventListener('pointercancel', release, opts);
   canvas.addEventListener('lostpointercapture', release, opts);
   canvas.addEventListener('pointerleave', () => router.pointerLeave(), opts);
@@ -178,17 +187,22 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<{ s
     pets.push({ body, controller: new PetController(pet, body, rng) });
   }
 
+  /** When each pet was last tapped (performance.now() seconds), for its heart burst. */
+  const tappedAt = new Map<string, number>();
   const router = new InputRouter({
     pets,
     world,
     /** Task 13 opens the cue ring here. */
     onCueRequest: () => undefined,
+    onTap: (id) => tappedAt.set(id, performance.now() / 1000),
   });
   const offPointer = listenPointer(app.canvas, router);
 
   const unlisten = await Promise.all([
+    // The one source of strokes: the webview never sees plain mouse moves in the real overlay.
     host.onCursor((p) => {
       cursor = p;
+      router.cursorMove(p.x, p.y, performance.now() / 1000);
     }),
     host.onFloorChanged((f) => {
       floor = f;
@@ -209,6 +223,7 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<{ s
     for (const p of pets) p.controller.update(dt, ctx);
     world.step(dt);
 
+    const nowSeconds = performance.now() / 1000;
     for (const { body: b, controller: c } of pets) {
       if (active > 0) {
         c.pet = updateLearned({
@@ -220,7 +235,8 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<{ s
       const { name, t } = c.anim();
       stage.draw(c.pet.id, b, rigPose(name, t, c.pet.mood));
       stage.drawZs(c.pet.id, name === 'nap' || name === 'cuddle-nap' ? floatingZs(t) : []);
-      stage.drawHearts(c.pet.id, name === 'purr' ? risingHearts(t) : []);
+      const tapAge = nowSeconds - (tappedAt.get(c.pet.id) ?? -Infinity);
+      stage.drawHearts(c.pet.id, name === 'purr' ? risingHearts(t) : heartBurst(tapAge));
     }
     pushHitboxes(world.bodies(), performance.now(), router.heldId());
   });
