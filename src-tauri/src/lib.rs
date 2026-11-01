@@ -15,6 +15,7 @@ pub fn run() {
         .manage(overlay::HitBoxes::default())
         .manage(tray::TrayState::default())
         .manage(create::CreateTarget::default())
+        .manage(overlay::ScaleFactor::default())
         .setup(|app| {
             #[cfg(target_os = "macos")]
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);

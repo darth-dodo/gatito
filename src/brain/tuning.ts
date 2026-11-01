@@ -46,4 +46,10 @@ export const TUNING = {
   simStepSeconds: 1 / 60,
   /** Whole-number screen scale for the 48 px pixel art. */
   renderScale: 1,
+  /**
+   * How a cat walks: 'puppet' swings the cut-out legs, 'frames' plays the generated walk-1..walk-6
+   * frames when the coat has them (and falls back to the puppet when it does not). 'frames' is the default:
+   * the generated cycle keeps the reference's body and adds real knee bends.
+   */
+  walkMode: 'frames' as 'puppet' | 'frames',
 } as const;

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Mood } from '../../src/brain/types';
-import { ANIM_SECONDS, rigPose, type AnimName, type RigFrame } from '../../src/render/rig';
+import { ANIM_SECONDS, rigPose, stepAngle, type AnimName, type RigFrame } from '../../src/render/rig';
 import { floatingZs } from '../../src/render/effects';
+import { headTop } from '../../src/render/rig';
 
 const m: Mood = { affection: 60, energy: 60 };
 const STEP = 1 / 120;
@@ -149,14 +150,67 @@ describe('rigPose', () => {
 
 describe('floatingZs', () => {
   it('rises and fades over time', () => {
-    const zs = floatingZs(1);
+    const zs = floatingZs(1, headTop('sleep-curl'));
     expect(zs.length).toBeGreaterThan(0);
     for (const z of zs) {
       expect(z.alpha).toBeGreaterThanOrEqual(0);
       expect(z.alpha).toBeLessThanOrEqual(1);
     }
-    const a = floatingZs(0.2)[0]!;
-    const b = floatingZs(0.6)[0]!;
+    const a = floatingZs(0.2, headTop('sleep-curl'))[0]!;
+    const b = floatingZs(0.6, headTop('sleep-curl'))[0]!;
     expect(b.y).toBeLessThan(a.y);
+  });
+});
+
+describe('walk cycle frames', () => {
+  it('cycles walk-1..walk-6 at a natural cadence when asked, without layered parts', () => {
+    const names = new Set<string>();
+    for (let t = 0; t < 1; t += 0.01) {
+      const f = rigPose('walk', t, m, { walkFrames: true });
+      names.add(f.pose);
+      expect(Object.keys(f.parts)).toEqual(['body']);
+    }
+    expect([...names].sort()).toEqual(['walk-1', 'walk-2', 'walk-3', 'walk-4', 'walk-5', 'walk-6']);
+    // About 9 frames a second: walk-1 shows for roughly a ninth of a second.
+    expect(rigPose('walk', 0.1, m, { walkFrames: true }).pose).toBe('walk-1');
+    expect(rigPose('walk', 0.12, m, { walkFrames: true }).pose).toBe('walk-2');
+    expect(rigPose('zoomies', 0.12, m, { walkFrames: true }).pose).not.toBe('walk-2');
+  });
+
+  it('keeps the puppet without the option and for other animations', () => {
+    expect(rigPose('walk', 0.5, m).pose).toBe('puppet');
+    expect(rigPose('idle-sit', 0.5, m, { walkFrames: true }).pose).toBe('sit');
+  });
+});
+
+describe('stepAngle', () => {
+  it('snaps rotations to 3 degree steps', () => {
+    const deg = Math.PI / 180;
+    expect(stepAngle(4 * deg)).toBeCloseTo(3 * deg, 9);
+    expect(stepAngle(5 * deg)).toBeCloseTo(6 * deg, 9);
+    expect(stepAngle(-1 * deg)).toBe(0);
+    for (const f of samples('walk', 0, 1)) {
+      for (const p of Object.values(f.parts)) {
+        expect(Math.abs(p.rotation / (3 * deg) - Math.round(p.rotation / (3 * deg)))).toBeLessThan(1e-9);
+        expect(Number.isInteger(p.x) && Number.isInteger(p.y)).toBe(true);
+      }
+    }
+  });
+});
+
+describe('nap "z" placement', () => {
+  it('starts above the sleeping cat\'s head, not on its back', () => {
+    const origin = headTop(rigPose('nap', 1, m).pose);
+    // The curled cat's head is in its front (right) half, and the top of the curl over it is about 30 px up.
+    expect(origin.x).toBeGreaterThan(30);
+    expect(origin.y).toBeLessThan(-28);
+    const first = floatingZs(0, origin)[0]!;
+    expect(first.x).toBe(origin.x);
+    expect(first.y).toBe(origin.y);
+    for (const z of floatingZs(2, origin)) expect(z.y).toBeLessThanOrEqual(origin.y);
+  });
+
+  it('uses the standing head for walk frames', () => {
+    expect(headTop('walk-3')).toEqual(headTop('puppet'));
   });
 });

@@ -5,7 +5,7 @@ import type { Point } from '../ipc';
 import type { Cue } from '../brain/types';
 import type { CueRing } from './cueRing';
 import type { PetController } from '../sim/controller';
-import type { Body, World } from '../sim/world';
+import type { Body, Box, World } from '../sim/world';
 
 /**
  * While a pet is held its hit box grows by this much on every side, so a fast drag that outruns
@@ -53,6 +53,8 @@ export interface InputDeps {
   onPetted(petId: string, n: number): boolean;
   /** True while this pet is playing a cued trick: petting then starts no purr or belly up. */
   isTraining(petId: string): boolean;
+  /** The box a pet was drawn in; defaults to its body. Hit tests use it so clicks match the picture. */
+  boxOf?(body: Body): Box;
 }
 
 interface Stroking {
@@ -223,7 +225,7 @@ export class InputRouter {
     const pets = this.deps.pets;
     for (let i = pets.length - 1; i >= 0; i--) {
       const p = pets[i]!;
-      const b = p.body;
+      const b = this.deps.boxOf?.(p.body) ?? p.body;
       if (x >= b.x && x <= b.x + b.width && y >= b.y && y <= b.y + b.height) return p;
     }
     return null;

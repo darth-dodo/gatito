@@ -343,6 +343,8 @@ The owner makes the art with GenAI image tools, in **pixel art**. Pets are **cut
 
 **Consistency tip.** Generate one full-body reference cat first, then pass it as the reference image for every part and pose, with the same prompt stem: *"pixel art, 96x96 grid, side view facing right, orange tabby cat, <part>, flat magenta #FF00FF background, no shadow, no text"*.
 
+**Cut from one reference.** Generated parts each bring their own outline and drift from each other, so the standing puppet's parts are cut out of the single `reference.png` instead: `npm run art:cut` uses the generated parts (kept in `generated/`) and the hand-drawn cut polygons in `cut.json` as masks and fills them with the reference's pixels. The body keeps the head and haunches; the lower legs, tail, ears and eyes are separate. At rest the puppet is pixel-identical to the reference.
+
 **Art pipeline.** `npm run art` reads `art/source/<species>/<coat>/<name>.png`, removes the magenta, snaps to the 96 by 96 grid with nearest-neighbour scaling, limits each image to 16 colours, trims, and packs a PixiJS sprite sheet per species and coat into `src/assets/atlas/`. Part pivots (for example, the tail's base) come from `art/rig/<species>.json`. It fails with a list of anything missing or the wrong size.
 
 **Placeholders.** Until the owner's art exists, the pipeline produces simple code-drawn placeholder parts with the same names, so everything can be built and tested; dropping real images in needs no code change.

@@ -1,9 +1,10 @@
 import { Container, Graphics, GraphicsContext, Sprite, type Application, type Spritesheet } from 'pixi.js';
 import { TUNING } from '../brain/tuning';
 import type { Pet } from '../brain/types';
-import type { Body } from '../sim/world';
+import type { Body, Position } from '../sim/world';
 import { PART_NAMES, type PartName } from './artNames';
 import type { FloatingZ, Heart, Sparkle } from './effects';
+import { fadeKey, nextFade, NO_FADE, topAlpha, type FadeState } from './fade';
 import { CAT_BOX, CELL, RIG, type RigFrame } from './rig';
 
 /** How long two poses cross-fade so a cat never snaps between them. */
@@ -31,9 +32,7 @@ interface Look {
 interface Entry {
   outer: Container;
   looks: [Look, Look];
-  active: 0 | 1;
-  shown: RigFrame['pose'] | null;
-  fadeStart: number;
+  fade: FadeState;
   facing: 1 | -1;
   fx: Container;
   hearts: Container;
@@ -72,20 +71,21 @@ export class PetStage {
   add(pet: Pet, atlas: Spritesheet): void {
     this.remove(pet.id);
     atlas.textureSource.scaleMode = 'nearest';
-    const outer = new Container();
+    const outer = new Container({ sortableChildren: true });
     const looks: [Look, Look] = [this.look(atlas), this.look(atlas)];
     looks[1].root.visible = false;
     const fx = new Container();
     fx.scale.set(TUNING.renderScale);
+    fx.zIndex = 2;
     const hearts = new Container();
     hearts.scale.set(TUNING.renderScale);
+    hearts.zIndex = 2;
     const sparkles = new Container();
     sparkles.scale.set(TUNING.renderScale);
+    sparkles.zIndex = 2;
     outer.addChild(looks[0].root, looks[1].root, fx, hearts, sparkles);
     this.layer.addChild(outer);
-    this.entries.set(pet.id, {
-      outer, looks, active: 0, shown: null, fadeStart: 0, facing: 1, fx, hearts, sparkles, sheet: atlas,
-    });
+    this.entries.set(pet.id, { outer, looks, fade: NO_FADE, facing: 1, fx, hearts, sparkles, sheet: atlas });
   }
 
   remove(id: string): void {
@@ -95,7 +95,8 @@ export class PetStage {
     this.entries.delete(id);
   }
 
-  draw(id: string, body: Body, frame: RigFrame): void {
+  /** Draws a pet; `at` is the interpolated position (defaults to the body's). */
+  draw(id: string, body: Body, frame: RigFrame, at: Position = body): void {
     const e = this.entries.get(id);
     if (!e) return;
     const s = TUNING.renderScale;
@@ -106,26 +107,27 @@ export class PetStage {
     const [ax, ay] = RIG.body.anchor;
     const pivotX = facing === 1 ? ax * CELL : CELL - ax * CELL;
     e.outer.position.set(
-      Math.round(body.x + (pivotX - CAT_BOX.left) * s),
-      Math.round(body.y + (ay * CELL - CAT_BOX.top) * s),
+      // Origin and offset are rounded apart so the sprite sits exactly on drawnBox (sim/world).
+      Math.round(at.x) + Math.round((pivotX - CAT_BOX.left) * s),
+      Math.round(at.y) + Math.round((ay * CELL - CAT_BOX.top) * s),
     );
 
+    // The base look stays at full alpha underneath; a new look fades in on top of it.
     const now = performance.now();
-    if (frame.pose !== e.shown) {
-      if (e.shown !== null) {
-        e.active = e.active === 0 ? 1 : 0;
-        e.fadeStart = now;
-      }
-      e.shown = frame.pose;
-    }
-    const k = Math.min(1, (now - e.fadeStart) / TRANSITION_MS);
-    const look = e.looks[e.active];
-    const old = e.looks[e.active === 0 ? 1 : 0];
-    look.root.visible = true;
-    look.root.alpha = k;
-    old.root.alpha = 1 - k;
-    old.root.visible = k < 1;
+    const key = fadeKey(frame.pose);
+    e.fade = nextFade(e.fade, key, now, TRANSITION_MS);
+    const base = e.looks[e.fade.base];
+    const top = e.looks[e.fade.base === 0 ? 1 : 0];
+    const alpha = topAlpha(e.fade, now, TRANSITION_MS);
+    base.root.visible = true;
+    base.root.alpha = 1;
+    base.root.zIndex = 0;
+    top.root.visible = e.fade.dir !== null && alpha > 0;
+    top.root.alpha = alpha;
+    top.root.zIndex = 1;
 
+    // The look showing this pose gets the frame; the other keeps its last one while it fades.
+    const look = key === e.fade.baseKey ? base : top;
     look.root.scale.set(facing * s, s);
     look.root.rotation = frame.rotation * facing;
     this.apply(look, frame, e.sheet);

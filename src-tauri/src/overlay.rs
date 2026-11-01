@@ -1,6 +1,7 @@
 use crate::screen::Rect;
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 
@@ -22,6 +23,29 @@ pub struct Point {
 /// Pet hit boxes (logical px, window-relative), set by the front end.
 #[derive(Default)]
 pub struct HitBoxes(Mutex<Vec<Rect>>);
+
+/// The overlay window's scale factor, cached so the 60 Hz cursor poll does not ask the main thread for it.
+/// The 2 s floor poll refreshes it (a display change or a move to another monitor).
+pub struct ScaleFactor(AtomicU64);
+
+impl Default for ScaleFactor {
+    fn default() -> Self {
+        Self(AtomicU64::new(1.0_f64.to_bits()))
+    }
+}
+
+impl ScaleFactor {
+    pub fn get(&self) -> f64 {
+        f64::from_bits(self.0.load(Ordering::Relaxed))
+    }
+
+    /// Stores a new factor; ignores values that are not positive and finite.
+    pub fn set(&self, scale: f64) {
+        if scale.is_finite() && scale > 0.0 {
+            self.0.store(scale.to_bits(), Ordering::Relaxed);
+        }
+    }
+}
 
 /// True when `p` is inside any box; edges are inclusive.
 pub fn cursor_hits(boxes: &[Rect], p: Point) -> bool {
@@ -80,6 +104,8 @@ pub fn create(app: &AppHandle) -> tauri::Result<()> {
         .visible_on_all_workspaces(true)
         .build()?;
     window.set_ignore_cursor_events(true)?;
+    app.state::<ScaleFactor>()
+        .set(window.scale_factor().unwrap_or(scale));
     Ok(())
 }
 
@@ -97,7 +123,7 @@ pub fn start_cursor_poll(app: AppHandle) {
             let (Ok(cursor), Ok(origin)) = (app.cursor_position(), window.outer_position()) else {
                 continue;
             };
-            let scale = window.scale_factor().unwrap_or(1.0);
+            let scale = app.state::<ScaleFactor>().get();
             let point = to_window_space(
                 (cursor.x, cursor.y),
                 (f64::from(origin.x), f64::from(origin.y)),
@@ -123,6 +149,17 @@ pub fn start_cursor_poll(app: AppHandle) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn scale_factor_cache_round_trips_and_rejects_nonsense() {
+        let cache = ScaleFactor::default();
+        assert_eq!(cache.get(), 1.0);
+        cache.set(2.0);
+        assert_eq!(cache.get(), 2.0);
+        cache.set(0.0);
+        cache.set(f64::NAN);
+        assert_eq!(cache.get(), 2.0);
+    }
 
     fn boxes() -> Vec<Rect> {
         vec![Rect {

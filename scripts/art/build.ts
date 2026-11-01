@@ -4,7 +4,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import sharp from 'sharp';
 import { COLOURS, SPECIES, type Colour, type Species } from '../../src/brain/types';
-import { ART_CELL, PART_NAMES, POSE_NAMES } from '../../src/render/artNames';
+import { ART_CELL, PART_NAMES, POSE_NAMES, WALK_FRAME_NAMES } from '../../src/render/artNames';
 import { defringe } from './defringe';
 import { PLACEHOLDER_COATS, writePlaceholders } from './placeholder';
 import { isKey, recolour } from './recolour';
@@ -24,7 +24,7 @@ function readRig(species: Species): Rig {
 }
 
 /** Removes the magenta key, snaps to the art grid (nearest neighbour) and limits to 16 colours. */
-async function prepare(file: string, name: string): Promise<Buffer> {
+export async function prepare(file: string, name: string): Promise<Buffer> {
   const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   if (info.width !== info.height) {
     throw new Error(`${name}: image is ${info.width} by ${info.height}, expected a square`);
@@ -49,8 +49,11 @@ export async function buildAtlas(
   srcDir: string,
   outDir: string,
 ): Promise<{ missing: string[] }> {
-  const names = [...PART_NAMES, ...POSE_NAMES] as string[];
-  const missing = names.filter((n) => !existsSync(join(srcDir, `${n}.png`)));
+  const has = (n: string) => existsSync(join(srcDir, `${n}.png`));
+  // The walk frames are optional, but all six or none.
+  const walk = WALK_FRAME_NAMES.some(has) ? [...WALK_FRAME_NAMES] : [];
+  const names = [...PART_NAMES, ...POSE_NAMES, ...walk] as string[];
+  const missing = names.filter((n) => !has(n));
   if (missing.length > 0) return { missing };
 
   const rig = readRig(species);
@@ -111,7 +114,7 @@ export async function main(args: string[]): Promise<number> {
           const scratch = join(temp, `${species}-${coat}`);
           if (DERIVED_COATS.includes(coat) && existsSync(tabbyDir)) {
             mkdirSync(scratch, { recursive: true });
-            for (const n of [...PART_NAMES, ...POSE_NAMES]) {
+            for (const n of [...PART_NAMES, ...POSE_NAMES, ...WALK_FRAME_NAMES]) {
               const file = join(tabbyDir, `${n}.png`);
               if (existsSync(file)) {
                 writeFileSync(join(scratch, `${n}.png`), await recolour(readFileSync(file), 'orange-tabby', coat));

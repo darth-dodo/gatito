@@ -1,0 +1,14 @@
+{
+  "note": "How scripts/art/cut-parts.ts cuts the puppet parts out of reference.png. Coordinates are 96 by 96 cell pixels; a pixel belongs to a polygon when its centre is inside. 'generated' uses the footprint of generated/<name>.png as the mask (grown by 'grow' pixels everywhere and by 'dilate' more for the part only, not for the hole it leaves in the body), clipped to 'clip'. Legs own the rows from 'line' down (removed from the body) and repeat 'overlap' rows above it so a swinging leg never opens a gap.",
+  "parts": {
+    "tail": { "mask": "generated", "grow": 1, "dilate": 1, "clip": [[0, 30], [27, 30], [27, 55], [22, 55], [22, 96], [0, 96]] },
+    "head": { "mask": "generated", "keepOnBody": true },
+    "ear-near": { "polygon": [[71, 14], [80.9, 14], [80.9, 22], [71, 22]] },
+    "ear-far": { "polygon": [[80.9, 14], [89, 14], [89, 22], [80.9, 22]] },
+    "eyes-open": { "polygon": [[83, 28], [88, 28], [88, 32], [83, 32]], "keepOnBody": true },
+    "leg-back-near": { "polygon": [[21, 50], [38, 50], [38.2, 64.5], [33.5, 70.5], [33.5, 96], [21, 96]], "line": 63, "overlap": 4 },
+    "leg-back-far": { "polygon": [[38, 50], [50, 50], [50, 96], [33.5, 96], [33.5, 70.5], [38.2, 64.5]], "line": 64, "overlap": 4 },
+    "leg-front-near": { "polygon": [[58, 50], [70.9, 50], [70.9, 79.9], [73.9, 79.9], [73.9, 96], [58, 96]], "line": 63, "overlap": 4 },
+    "leg-front-far": { "polygon": [[70.9, 50], [84, 50], [84, 96], [73.9, 96], [73.9, 79.9], [70.9, 79.9]], "line": 63, "overlap": 4 }
+  }
+}

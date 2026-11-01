@@ -1,4 +1,4 @@
-import { Application } from 'pixi.js';
+import { Application, UPDATE_PRIORITY, type Spritesheet } from 'pixi.js';
 import type { Floor, Point, Rect } from '../ipc';
 import { activeSeconds, clampFrameDelta } from '../brain/clock';
 import { fade, updateLearned } from '../brain/learning';
@@ -9,12 +9,13 @@ import type { Pet } from '../brain/types';
 import { loadAtlas } from '../render/atlas';
 import { floatingZs, heartBurst, risingHearts, sparkleBurst } from '../render/effects';
 import { CueRingView } from '../render/cueRingView';
-import { CAT_BOX, rigPose } from '../render/rig';
+import { debugEnabled, frameReadout } from '../render/frameStats';
+import { CAT_BOX, headTop, rigPose } from '../render/rig';
 import { PetStage } from '../render/stage';
 import { PetController } from '../sim/controller';
 import { PetTrainer } from '../sim/trickSession';
 import { NapTime, callOverX } from './napTime';
-import { World, type Body } from '../sim/world';
+import { World, type Body, type Box } from '../sim/world';
 import { CueRing } from './cueRing';
 import { HELD_HITBOX_PAD_PX, InputRouter, cursorEscapedHold } from './input';
 
@@ -49,12 +50,19 @@ export interface PetOptions {
 interface Living {
   body: Body;
   controller: PetController;
+  /** The coat has walk cycle frames and TUNING.walkMode asks for them. */
+  walkFrames: boolean;
   trainer: PetTrainer;
 }
 
 /** The usable screen as a rect, for laying out the cue ring. */
 function floorRect(f: Floor): Rect {
   return { x: f.x, y: f.y, width: f.width, height: f.bottom - f.y };
+}
+
+/** True when TUNING.walkMode asks for walk cycle frames and this coat's sheet has them. */
+function usesWalkFrames(atlas: Spritesheet): boolean {
+  return TUNING.walkMode === 'frames' && atlas.textures['walk-1'] !== undefined;
 }
 
 /** Places pet `index` of `count` evenly along the floor; a lone pet starts in the middle. */
@@ -96,15 +104,17 @@ function dropBody(id: string, floor: Floor, x01: number): Body {
  */
 function hitboxPusher(
   host: PetHost,
+  boxOf: (b: Body) => Box,
 ): (bodies: readonly Body[], now: number, heldId: string | null, extra: readonly Rect[]) => void {
   let lastKey = '';
   let lastAt = -Infinity;
   return (bodies, now, heldId, extra) => {
     const petRects: Rect[] = bodies.map((b) => {
       const pad = b.id === heldId ? HELD_HITBOX_PAD_PX : 0;
+      const box = boxOf(b);
       return {
-        x: Math.round(b.x) - pad,
-        y: Math.round(b.y) - pad,
+        x: box.x - pad,
+        y: box.y - pad,
         width: b.width + 2 * pad,
         height: b.height + 2 * pad,
       };
@@ -116,6 +126,18 @@ function hitboxPusher(
     lastAt = now;
     void host.setHitboxes(rects);
   };
+}
+
+/** `WINDOWSILL_DEBUG` at build time, injected by vite.config.ts `define`. */
+declare const __WINDOWSILL_DEBUG__: string;
+
+/** `localStorage.windowsillDebug`, or null where storage is unavailable. */
+function storedDebugFlag(): string | null {
+  try {
+    return window.localStorage.getItem('windowsillDebug');
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -184,14 +206,18 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
   const baseSeed = options.seed ?? Date.now();
 
   const app = new Application();
+  // One canvas pixel per CSS pixel: the full-screen transparent canvas draws about 4x fewer pixels on a
+  // Retina display, and `pixelated` keeps the browser's upscale of the pixel art crisp.
   await app.init({
     backgroundAlpha: 0,
     resizeTo: window,
-    resolution: window.devicePixelRatio,
-    autoDensity: true,
+    resolution: 1,
     antialias: false,
     roundPixels: true,
   });
+  app.canvas.style.width = '100%';
+  app.canvas.style.height = '100%';
+  app.canvas.style.imageRendering = 'pixelated';
   options.container.appendChild(app.canvas);
 
   let floor = await host.getFloor();
@@ -200,7 +226,7 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
   const stage = new PetStage(app);
   const ring = new CueRing();
   const ringView = new CueRingView(app);
-  const pushHitboxes = hitboxPusher(host);
+  const pushHitboxes = hitboxPusher(host, (b) => world.drawnBox(b));
   const pets: Living[] = [];
   const nap = new NapTime(options.napTime ?? false);
   let napT = 0;
@@ -230,7 +256,7 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
       () => body.held || !body.grounded,
       () => nap.curled,
     );
-    pets.push({ body, controller, trainer });
+    pets.push({ body, controller, trainer, walkFrames: usesWalkFrames(atlas) });
   };
 
   for (const [i, pet] of options.pets.entries()) {
@@ -253,7 +279,7 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
       const p = byId(id);
       // Curled pets take no cues.
       if (!p || nap.curled) return;
-      const b = p.body;
+      const b = world.drawnBox(p.body);
       ring.open(id, { x: b.x + b.width / 2, y: b.y + b.height / 2 }, floorRect(floor));
     },
     onCue: (id, cue) => {
@@ -269,6 +295,7 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
     },
     isTraining: (id) => byId(id)?.trainer.phase() === 'playing',
     onTap: (id) => tappedAt.set(id, performance.now() / 1000),
+    boxOf: (b) => world.drawnBox(b),
   });
   const offPointer = listenPointer(app.canvas, router);
 
@@ -284,6 +311,24 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
       world.setFloor(f);
     }),
   ]);
+
+  const readout = debugEnabled(window.location.search, storedDebugFlag(), __WINDOWSILL_DEBUG__)
+    ? frameReadout(document.body)
+    : null;
+
+  if (readout) {
+    // Brackets each frame's work: before the pets update and after Pixi has drawn them.
+    let workStart = 0;
+    app.ticker.add(() => (workStart = performance.now()), undefined, UPDATE_PRIORITY.HIGH);
+    app.ticker.add(
+      (ticker) => {
+        const now = performance.now();
+        readout(ticker.deltaMS, now - workStart, now);
+      },
+      undefined,
+      UPDATE_PRIORITY.UTILITY,
+    );
+  }
 
   app.ticker.add((ticker) => {
     const realDt = clampFrameDelta(ticker.deltaMS / 1000);
@@ -308,7 +353,7 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
     for (const p of pets) noteLearned(p.body.id, p.trainer.update(dt));
 
     const nowSeconds = performance.now() / 1000;
-    for (const { body: b, controller: c } of pets) {
+    for (const { body: b, controller: c, walkFrames } of pets) {
       if (active > 0) {
         c.pet = updateLearned({
           ...c.pet,
@@ -317,9 +362,10 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
         });
       }
       const { name, t } = nap.curled ? curledAnim(napT) : c.anim();
+      const frame = rigPose(name, t, c.pet.mood, { walkFrames });
       stage.setAlpha(c.pet.id, nap.alpha);
-      stage.draw(c.pet.id, b, rigPose(name, t, c.pet.mood));
-      stage.drawZs(c.pet.id, name === 'nap' || name === 'cuddle-nap' ? floatingZs(t) : []);
+      stage.draw(c.pet.id, b, frame, world.drawPosition(b));
+      stage.drawZs(c.pet.id, name === 'nap' || name === 'cuddle-nap' ? floatingZs(t, headTop(frame.pose)) : []);
       const tapAge = nowSeconds - (tappedAt.get(c.pet.id) ?? -Infinity);
       stage.drawHearts(c.pet.id, name === 'purr' ? risingHearts(t) : heartBurst(tapAge));
       stage.drawSparkles(c.pet.id, sparkleBurst(nowSeconds - (learnedAt.get(c.pet.id) ?? -Infinity)));
@@ -366,7 +412,10 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
       const living = find();
       if (!living) return;
       const next = { ...living.controller.pet, name: pet.name, colour: pet.colour, style: pet.style };
-      if (atlas) stage.add(next, atlas);
+      if (atlas) {
+        stage.add(next, atlas);
+        living.walkFrames = usesWalkFrames(atlas);
+      }
       living.controller.pet = next;
     },
   };

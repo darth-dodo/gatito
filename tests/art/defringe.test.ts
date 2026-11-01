@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defringe, isMagentaTinted } from '../../scripts/art/defringe';
+import { defringe, isLightMagenta, isMagentaTinted } from '../../scripts/art/defringe';
 
 /** A w by h RGBA buffer, transparent, with helpers to paint pixels. */
 function canvas(w: number, h: number) {
@@ -63,14 +63,12 @@ describe('defringe', () => {
 });
 
 describe('defringe, tighter rules', () => {
-  it('keeps a pink nose and a saturated rose beside orange fur unchanged', () => {
+  it('keeps a pink nose at the edge of orange fur unchanged', () => {
     const c = canvas(6, 3);
     for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) c.set(x, y, [224, 136, 58]);
     c.set(3, 1, [232, 144, 154]);
-    c.set(4, 1, [220, 90, 150]);
     defringe(c.data, 6, 3);
     expect(c.px(3, 1)).toEqual([232, 144, 154, 255]);
-    expect(c.px(4, 1)).toEqual([220, 90, 150, 255]);
   });
 
   it('keeps a one pixel diagonal stroke', () => {
@@ -78,5 +76,54 @@ describe('defringe, tighter rules', () => {
     for (let i = 0; i < 5; i++) c.set(i, i, [42, 26, 20]);
     defringe(c.data, 6, 6);
     for (let i = 0; i < 5; i++) expect(c.px(i, i)[3]).toBe(255);
+  });
+});
+
+describe('defringe, light magenta halo', () => {
+  it('flags light magenta blends', () => {
+    expect(isLightMagenta(236, 170, 220)).toBe(true);
+    expect(isLightMagenta(220, 90, 150)).toBe(true);
+    expect(isLightMagenta(232, 144, 154)).toBe(false); // nose: blue barely above green
+    expect(isLightMagenta(224, 136, 58)).toBe(false);
+  });
+
+  it('clears a light pink halo beside the keyed background', () => {
+    const c = canvas(8, 3);
+    for (let y = 0; y < 3; y++) for (let x = 0; x < 4; x++) c.set(x, y, [224, 136, 58]);
+    for (let y = 0; y < 3; y++) c.set(4, y, [42, 26, 20]); // outline
+    for (let y = 0; y < 3; y++) c.set(5, y, [236, 170, 220]); // halo outside the outline
+    defringe(c.data, 8, 3);
+    for (let y = 0; y < 3; y++) {
+      expect(c.px(5, y)[3]).toBe(0);
+      expect(c.px(4, y)).toEqual([42, 26, 20, 255]);
+    }
+  });
+
+  it('clears a saturated rose at the silhouette edge, by design', () => {
+    // The old case kept this rose. At the edge it cannot be told from the keyed halo, so it goes;
+    // the same rose away from the edge is kept (next test). The nose beside it stays.
+    const c = canvas(6, 3);
+    for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) c.set(x, y, [224, 136, 58]);
+    c.set(3, 1, [232, 144, 154]);
+    c.set(4, 1, [220, 90, 150]);
+    defringe(c.data, 6, 3);
+    expect(c.px(3, 1)).toEqual([232, 144, 154, 255]);
+    expect(c.px(4, 1)[3]).toBe(0);
+  });
+
+  it('keeps interior pinks (nose, inner ear, rose) away from the edge', () => {
+    const c = canvas(11, 11);
+    for (let y = 0; y < 11; y++) for (let x = 0; x < 11; x++) c.set(x, y, [224, 136, 58]);
+    c.set(5, 4, [236, 170, 220]); // inner ear
+    c.set(5, 5, [220, 90, 150]); // rose
+    c.set(5, 6, [232, 144, 154]); // nose
+    // Transparent border, three or more pixels away from the pinks.
+    for (let i = 0; i < 11; i++) {
+      for (const [x, y] of [[i, 0], [i, 10], [0, i], [10, i]] as const) c.data[(y * 11 + x) * 4 + 3] = 0;
+    }
+    defringe(c.data, 11, 11);
+    expect(c.px(5, 4)).toEqual([236, 170, 220, 255]);
+    expect(c.px(5, 5)).toEqual([220, 90, 150, 255]);
+    expect(c.px(5, 6)).toEqual([232, 144, 154, 255]);
   });
 });
