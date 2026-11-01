@@ -66,10 +66,10 @@ export interface SpeciesRig {
    */
   headTop: Partial<Record<PoseName, Point>> & { puppet: Point };
   /**
-   * 1 when the ear art stands up (it folds back anticlockwise), -1 when it hangs from its root (a floppy
-   * ear swings back clockwise, away from the eye).
+   * Scales and turns the ears' mood rotation: 1 when the ear art stands up (it folds back anticlockwise),
+   * negative when it hangs from its root (a floppy ear swings back clockwise, away from the eye, and less far).
    */
-  earTurn: 1 | -1;
+  earTurn: number;
 }
 
 export const CELL = ART_CELL;

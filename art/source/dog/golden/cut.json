@@ -1,5 +1,5 @@
 {
-  "note": "How scripts/art/cut-parts.ts cuts the golden dog's puppet parts out of reference.png (see the cat's cut.json for the fields). The far ear is hidden behind the head, so it is a sliver of the head top kept on the body that only peeks out when it rotates.",
+  "note": "How scripts/art/cut-parts.ts cuts the golden dog's puppet parts out of reference.png (see the cat's cut.json for the fields). The near ear stays on the body too, so a swinging ear never shows a hole behind it. The far ear is hidden behind the head, so it is a patch inside the head, kept on the body and drawn behind it: it never shows.",
   "parts": {
     "tail": {
       "mask": "generated",
@@ -58,25 +58,26 @@
           69,
           22
         ]
-      ]
+      ],
+      "keepOnBody": true
     },
     "ear-far": {
       "polygon": [
         [
           72,
-          16
+          24
         ],
         [
-          81,
-          16
+          77,
+          24
         ],
         [
-          81,
-          20
+          77,
+          30
         ],
         [
           72,
-          20
+          30
         ]
       ],
       "keepOnBody": true
