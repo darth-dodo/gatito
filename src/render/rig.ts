@@ -153,6 +153,21 @@ const SIT_OVERLAY: Partial<Record<PartName, [number, number]>> = {
   'eyes-closed': [34, -37],
 };
 
+/**
+ * Just above the top of the head, measured on the art, in cell pixels relative to the body pivot (facing
+ * right): where a napping cat's "z"s start. Looks not listed use the standing cat's.
+ */
+const HEAD_TOP: Partial<Record<PoseName, { x: number; y: number }>> & { puppet: { x: number; y: number } } = {
+  puppet: { x: 36, y: -42 },
+  sit: { x: 27, y: -48 },
+  'sleep-curl': { x: 40, y: -32 },
+};
+
+/** Pure: where a look's head top is. */
+export function headTop(pose: RigFrame['pose']): { x: number; y: number } {
+  return (pose !== 'puppet' && !pose.startsWith('walk-') && HEAD_TOP[pose as PoseName]) || HEAD_TOP.puppet;
+}
+
 const clamp01 = (v: number): number => Math.min(1, Math.max(0, v));
 
 /** 0 for a happy cat, 1 for a cross one. Content and Grumpy sit pin it to their ends. */

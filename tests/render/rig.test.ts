@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Mood } from '../../src/brain/types';
 import { ANIM_SECONDS, rigPose, stepAngle, type AnimName, type RigFrame } from '../../src/render/rig';
 import { floatingZs } from '../../src/render/effects';
+import { headTop } from '../../src/render/rig';
 
 const m: Mood = { affection: 60, energy: 60 };
 const STEP = 1 / 120;
@@ -149,14 +150,14 @@ describe('rigPose', () => {
 
 describe('floatingZs', () => {
   it('rises and fades over time', () => {
-    const zs = floatingZs(1);
+    const zs = floatingZs(1, headTop('sleep-curl'));
     expect(zs.length).toBeGreaterThan(0);
     for (const z of zs) {
       expect(z.alpha).toBeGreaterThanOrEqual(0);
       expect(z.alpha).toBeLessThanOrEqual(1);
     }
-    const a = floatingZs(0.2)[0]!;
-    const b = floatingZs(0.6)[0]!;
+    const a = floatingZs(0.2, headTop('sleep-curl'))[0]!;
+    const b = floatingZs(0.6, headTop('sleep-curl'))[0]!;
     expect(b.y).toBeLessThan(a.y);
   });
 });
@@ -197,3 +198,19 @@ describe('stepAngle', () => {
   });
 });
 
+describe('nap "z" placement', () => {
+  it('starts above the sleeping cat\'s head, not on its back', () => {
+    const origin = headTop(rigPose('nap', 1, m).pose);
+    // The curled cat's head is in its front (right) half, and the top of the curl over it is about 30 px up.
+    expect(origin.x).toBeGreaterThan(30);
+    expect(origin.y).toBeLessThan(-28);
+    const first = floatingZs(0, origin)[0]!;
+    expect(first.x).toBe(origin.x);
+    expect(first.y).toBe(origin.y);
+    for (const z of floatingZs(2, origin)) expect(z.y).toBeLessThanOrEqual(origin.y);
+  });
+
+  it('uses the standing head for walk frames', () => {
+    expect(headTop('walk-3')).toEqual(headTop('puppet'));
+  });
+});

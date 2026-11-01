@@ -8,7 +8,7 @@ import { TUNING } from '../brain/tuning';
 import type { Pet } from '../brain/types';
 import { loadAtlas } from '../render/atlas';
 import { floatingZs, heartBurst, risingHearts } from '../render/effects';
-import { CAT_BOX, rigPose } from '../render/rig';
+import { CAT_BOX, headTop, rigPose } from '../render/rig';
 import { PetStage } from '../render/stage';
 import { PetController } from '../sim/controller';
 import { World, type Body } from '../sim/world';
@@ -256,7 +256,7 @@ export async function startPets(host: PetHost, options: PetOptions): Promise<Run
       const { name, t } = c.anim();
       const frame = rigPose(name, t, c.pet.mood, { walkFrames });
       stage.draw(c.pet.id, b, frame);
-      stage.drawZs(c.pet.id, name === 'nap' || name === 'cuddle-nap' ? floatingZs(t) : []);
+      stage.drawZs(c.pet.id, name === 'nap' || name === 'cuddle-nap' ? floatingZs(t, headTop(frame.pose)) : []);
       const tapAge = nowSeconds - (tappedAt.get(c.pet.id) ?? -Infinity);
       stage.drawHearts(c.pet.id, name === 'purr' ? risingHearts(t) : heartBurst(tapAge));
     }
